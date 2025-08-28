@@ -201,7 +201,12 @@
     "copyLink": "Copy link",
     "save": "Save to current file",
     "saveAs": "Save as",
-    "load": "Open",
+    "saveToServer": "Save to Server",
+    "load": "Load",
+    "loadFromFile": "Load from File",
+    "loadFromServerDrive": "Load from Server Drive",
+    "loadFromFileDescription": "Open a local .excalidraw file from your computer",
+    "loadFromServerDescription": "Browse and open files saved on the server",
     "getShareableLink": "Get shareable link",
     "close": "Close",
     "selectLanguage": "Select language",
@@ -395,7 +400,10 @@
     "link_button": "Export to Link",
     "excalidrawplus_description": "Save the scene to your Excalidraw+ workspace.",
     "excalidrawplus_button": "Export",
-    "excalidrawplus_exportError": "Couldn't export to Excalidraw+ at this moment..."
+    "excalidrawplus_exportError": "Couldn't export to Excalidraw+ at this moment...",
+    "serverDrive_title": "Save to Server Drive",
+    "serverDrive_details": "Save the scene to a mounted server directory.",
+    "serverDrive_button": "Save to Server"
   },
   "helpDialog": {
     "blog": "Read our blog",
@@ -522,6 +530,7 @@
     "copyToClipboardAsSvg": "Copied {{exportSelection}} to clipboard as SVG\n({{exportColorScheme}})",
     "fileSaved": "File saved.",
     "fileSavedToFilename": "Saved to {filename}",
+    "fileSavedToServer": "Saved to server as {filename}",
     "canvas": "canvas",
     "selection": "selection",
     "pasteAsSingleElement": "Use {{shortcut}} to paste as a single element,\nor paste into an existing text editor",
@@ -640,5 +649,20 @@
     },
     "itemNotAvailable": "Command is not available...",
     "shortcutHint": "For Command palette, use {{shortcut}}"
+  },
+  "serverDrive": {
+    "browserTitle": "Browse Server Drive Files",
+    "loading": "Loading files...",
+    "noFiles": "No files found",
+    "delete": "Delete",
+    "loadButton": "Load",
+    "filenameRequired": "Filename is required",
+    "saveFailed": "Failed to save file",
+    "saveTitle": "Save to Server Drive",
+    "filenameLabel": "Filename",
+    "filenamePlaceholder": "Enter filename",
+    "extensionHint": ".excalidraw extension will be added automatically",
+    "saving": "Saving...",
+    "saveButton": "Save"
   }
 }

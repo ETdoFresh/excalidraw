@@ -285,7 +285,7 @@ export const actionLoadScene = register({
       };
     }
   },
-  keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.O,
+  keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.shiftKey && event.key === KEYS.O,
 });
 
 export const actionExportWithDarkMode = register({

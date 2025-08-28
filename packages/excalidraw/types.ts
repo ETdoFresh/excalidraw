@@ -359,7 +359,10 @@ export interface AppState {
     | { name: "imageExport" | "help" | "jsonExport" }
     | { name: "ttd"; tab: "text-to-diagram" | "mermaid" }
     | { name: "commandPalette" }
-    | { name: "elementLinkSelector"; sourceElementId: ExcalidrawElement["id"] };
+    | { name: "elementLinkSelector"; sourceElementId: ExcalidrawElement["id"] }
+    | { name: "serverDriveLoad" }
+    | { name: "serverDriveSave"; elements?: readonly ExcalidrawElement[]; appState?: Partial<AppState>; files?: BinaryFiles }
+    | { name: "loadOptions" };
 
   /**
    * Reflects user preference for whether the default sidebar should be docked.

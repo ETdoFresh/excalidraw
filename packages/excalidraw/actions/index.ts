@@ -42,6 +42,10 @@ export {
   actionLoadScene,
 } from "./actionExport";
 
+export { actionLoadFromServerDrive } from "./actionLoadFromServerDrive";
+export { actionSaveToServerDrive, actionQuickSaveToServer } from "./actionSaveToServerDrive";
+export { actionOpenLoadOptions } from "./actionLoadOptions";
+
 export { actionCopyStyles, actionPasteStyles } from "./actionStyles";
 export {
   actionToggleCanvasMenu,

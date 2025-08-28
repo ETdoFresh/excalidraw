@@ -58,8 +58,8 @@ export type ShortcutName =
 
 const shortcutMap: Record<ShortcutName, string[]> = {
   toggleTheme: [getShortcutKey("Shift+Alt+D")],
-  saveScene: [getShortcutKey("CtrlOrCmd+S")],
-  loadScene: [getShortcutKey("CtrlOrCmd+O")],
+  saveScene: [getShortcutKey("CtrlOrCmd+Shift+S")],
+  loadScene: [getShortcutKey("CtrlOrCmd+Shift+O")],
   clearCanvas: [getShortcutKey("CtrlOrCmd+Delete")],
   imageExport: [getShortcutKey("CtrlOrCmd+Shift+E")],
   commandPalette: [

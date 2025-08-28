@@ -102,12 +102,28 @@ export const actionClearCanvas = register({
   },
   perform: (elements, appState, _, app) => {
     app.imageCache.clear();
+    
+    // Generate a new filename with current date and time
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).replace(/\//g, '-');
+    const timeStr = now.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }).replace(/:/g, '');
+    const newName = `Untitled-${dateStr}-${timeStr}`;
+    
     return {
       elements: elements.map((element) =>
         newElementWith(element, { isDeleted: true }),
       ),
       appState: {
         ...getDefaultAppState(),
+        name: newName,
         files: {},
         theme: appState.theme,
         penMode: appState.penMode,
