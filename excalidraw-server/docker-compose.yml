@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  excalidraw:
+    image: etdofresh/excalidraw-server:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./saves:/app/saves
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
