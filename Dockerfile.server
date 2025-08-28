@@ -109,8 +109,8 @@ app.get('/api/saves/:filename', async (req, res) => {
   }
 });
 
-// Save or update a file
-app.post('/api/saves/:filename', express.json(), async (req, res) => {
+// Save or update a file (supports both POST and PUT)
+const saveHandler = async (req, res) => {
   try {
     const filename = req.params.filename;
     const filepath = path.join(SAVES_DIR, filename);
@@ -131,7 +131,10 @@ app.post('/api/saves/:filename', express.json(), async (req, res) => {
     console.error('Error saving file:', error);
     res.status(500).json({ error: 'Failed to save file' });
   }
-});
+};
+
+app.post('/api/saves/:filename', express.json(), saveHandler);
+app.put('/api/saves/:filename', express.json(), saveHandler);
 
 // Upload file
 app.post('/api/upload', upload.single('file'), (req, res) => {

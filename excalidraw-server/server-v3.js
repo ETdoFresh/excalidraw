@@ -8,17 +8,20 @@ const morgan = require('morgan');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Middleware - Order matters!
 app.use(morgan('combined'));
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Debug logging for ALL requests (helpful for debugging routing issues)
+// CRITICAL: Set up API routes BEFORE static file serving
+// Parse JSON only for API routes
+app.use('/api', express.json({ limit: '50mb' }));
+app.use('/api', express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Debug logging for ALL requests
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   const isApi = req.path.startsWith('/api/');
-  console.log(`[${timestamp}] ${req.method} ${req.path}${isApi ? ' (API)' : ''}`);
+  console.log(`[${timestamp}] ${req.method} ${req.path}${isApi ? ' (API)' : ' (STATIC)'}`);
   next();
 });
 
@@ -37,13 +40,26 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// API Routes
+// =======================
+// API ROUTES - MUST BE FIRST
+// =======================
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  console.log(`[${new Date().toISOString()}] Health check requested`);
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    version: 'v3.0'
+  });
+});
 
 // Get list of saved files
 app.get('/api/saves', async (req, res) => {
   try {
     const files = await fs.readdir(SAVES_DIR);
     const excalidrawFiles = files.filter(f => f.endsWith('.excalidraw'));
+    console.log(`[${new Date().toISOString()}] Listing ${excalidrawFiles.length} saved files`);
     res.json(excalidrawFiles);
   } catch (error) {
     console.error('Error listing saves:', error);
@@ -63,6 +79,7 @@ app.get('/api/saves/:filename', async (req, res) => {
     }
     
     const content = await fs.readFile(filepath, 'utf8');
+    console.log(`[${new Date().toISOString()}] Retrieved file: ${filename}`);
     res.json(JSON.parse(content));
   } catch (error) {
     console.error('Error reading file:', error);
@@ -74,11 +91,13 @@ app.get('/api/saves/:filename', async (req, res) => {
   }
 });
 
-// Save or update a file (supports both POST and PUT)
+// Save or update a file - Handle both POST and PUT
 const saveHandler = async (req, res) => {
   try {
     const filename = req.params.filename;
     const filepath = path.join(SAVES_DIR, filename);
+    
+    console.log(`[${new Date().toISOString()}] Saving file: ${filename}`);
     
     // Security check
     if (!filepath.startsWith(SAVES_DIR)) {
@@ -91,6 +110,7 @@ const saveHandler = async (req, res) => {
       : `${filepath}.excalidraw`;
     
     await fs.writeFile(finalPath, JSON.stringify(req.body, null, 2));
+    console.log(`[${new Date().toISOString()}] File saved successfully: ${path.basename(finalPath)}`);
     res.json({ success: true, filename: path.basename(finalPath) });
   } catch (error) {
     console.error('Error saving file:', error);
@@ -98,14 +118,15 @@ const saveHandler = async (req, res) => {
   }
 };
 
-app.post('/api/saves/:filename', express.json(), saveHandler);
-app.put('/api/saves/:filename', express.json(), saveHandler);
+app.post('/api/saves/:filename', saveHandler);
+app.put('/api/saves/:filename', saveHandler);
 
 // Upload file
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
+  console.log(`[${new Date().toISOString()}] File uploaded: ${req.file.filename}`);
   res.json({ success: true, filename: req.file.filename });
 });
 
@@ -121,6 +142,7 @@ app.delete('/api/saves/:filename', async (req, res) => {
     }
     
     await fs.unlink(filepath);
+    console.log(`[${new Date().toISOString()}] File deleted: ${filename}`);
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting file:', error);
@@ -132,13 +154,8 @@ app.delete('/api/saves/:filename', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-});
-
 // Frontend logging endpoint
-app.post('/api/log', express.json(), (req, res) => {
+app.post('/api/log', (req, res) => {
   const { level = 'info', message, data } = req.body;
   const timestamp = new Date().toISOString();
   const logPrefix = `[${timestamp}] [FRONTEND] [${level.toUpperCase()}]`;
@@ -152,9 +169,9 @@ app.post('/api/log', express.json(), (req, res) => {
   res.json({ success: true });
 });
 
-// 404 handler for unmatched API routes (must come after all API routes)
+// Catch all unmatched API routes
 app.all('/api/*', (req, res) => {
-  console.log(`[${new Date().toISOString()}] 404 - Unmatched API route: ${req.method} ${req.path}`);
+  console.log(`[${new Date().toISOString()}] 404 - API endpoint not found: ${req.method} ${req.path}`);
   res.status(404).json({ 
     error: 'API endpoint not found',
     path: req.path,
@@ -162,73 +179,77 @@ app.all('/api/*', (req, res) => {
   });
 });
 
-// IMPORTANT: Static files and catch-all MUST come after all API routes
-// Otherwise they will intercept API calls
+// =======================
+// STATIC FILE SERVING - MUST BE AFTER API ROUTES
+// =======================
 
-// Serve static frontend files (but NOT for /api/* routes)
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api/')) {
-    // Skip static file serving for API routes
-    return next();
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public'), {
+  // Don't serve index.html for API routes
+  index: false,
+  setHeaders: (res, filePath) => {
+    // Add cache headers for static assets
+    if (filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.png')) {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
   }
-  express.static(path.join(__dirname, 'public'))(req, res, next);
-});
+}));
 
-// Catch-all route for SPA routing (with optional frontend logging injection)
-// This must NOT catch /api/* routes
+// Catch-all route for SPA - serves index.html for all non-API routes
 app.get('*', async (req, res) => {
-  // Double-check we're not catching API routes
+  // This should never catch /api/* routes due to the order
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
+    console.error(`[${new Date().toISOString()}] ERROR: API route leaked to catch-all: ${req.path}`);
+    return res.status(500).json({ error: 'Server routing error' });
   }
   
   const indexPath = path.join(__dirname, 'public', 'index.html');
   
-  // If frontend logging is enabled, inject the logging script
+  // Check if frontend logging is enabled
   if (process.env.ENABLE_FRONTEND_LOGGING === 'true') {
     try {
       let html = await fs.readFile(indexPath, 'utf8');
+      
+      // Inject logging script
       const loggerScript = `
 <script>
-// Frontend logging helper
 (function() {
   const originalLog = console.log;
   const originalError = console.error;
   const originalWarn = console.warn;
-
-  function sendToBackend(level, args) {
+  
+  function sendLog(level, args) {
     try {
-      const message = Array.from(args).map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
       fetch('/api/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level, message })
+        body: JSON.stringify({
+          level: level,
+          message: Array.from(args).map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+        })
       }).catch(() => {});
-    } catch (e) {}
+    } catch(e) {}
   }
-
+  
   console.log = function(...args) {
     originalLog.apply(console, args);
-    sendToBackend('info', args);
+    sendLog('info', args);
   };
   console.error = function(...args) {
     originalError.apply(console, args);
-    sendToBackend('error', args);
+    sendLog('error', args);
   };
   console.warn = function(...args) {
     originalWarn.apply(console, args);
-    sendToBackend('warn', args);
+    sendLog('warn', args);
   };
-
-  window.addEventListener('error', function(event) {
-    sendToBackend('error', ['Unhandled error: ' + event.message + ' at ' + event.filename + ':' + event.lineno]);
+  
+  window.addEventListener('error', function(e) {
+    sendLog('error', ['Uncaught error: ' + e.message + ' at ' + e.filename + ':' + e.lineno]);
   });
 })();
 </script>`;
       
-      // Inject before closing head tag
       html = html.replace('</head>', loggerScript + '</head>');
       res.send(html);
     } catch (error) {
@@ -242,8 +263,8 @@ app.get('*', async (req, res) => {
 
 // Start server
 const server = app.listen(PORT, '0.0.0.0', async () => {
-  console.log('=====================================');
-  console.log('🚀 Excalidraw Server Started');
+  console.log('\n=====================================');
+  console.log('🚀 Excalidraw Server v3.0 Started');
   console.log('=====================================');
   console.log(`Server URL: http://0.0.0.0:${PORT}`);
   console.log(`Saves directory: ${SAVES_DIR}`);
@@ -266,40 +287,55 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`✅ Saves directory created`);
   }
   
-  // Test internal API
+  // Test internal API with delay
   const http = require('http');
-  // Small delay to ensure server is fully ready
   setTimeout(() => {
     http.get(`http://127.0.0.1:${PORT}/api/health`, (res) => {
-      if (res.statusCode === 200) {
-        console.log('✅ Health endpoint responding');
-      } else {
-        console.log(`⚠️  Health endpoint returned ${res.statusCode}`);
-      }
-      res.resume(); // Consume response data to free up memory
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.status === 'healthy') {
+            console.log('✅ Health endpoint responding correctly');
+          } else {
+            console.log('⚠️  Health endpoint returned unexpected data');
+          }
+        } catch (e) {
+          console.log('❌ Health endpoint returned non-JSON response');
+        }
+      });
     }).on('error', (err) => {
       console.log('❌ Health endpoint not responding:', err.message);
     });
   }, 100);
   
   console.log('');
-  console.log('Available endpoints:');
-  console.log(`  GET    /api/health`);
-  console.log(`  GET    /api/saves`);
-  console.log(`  GET    /api/saves/:filename`);
-  console.log(`  PUT    /api/saves/:filename`);
-  console.log(`  POST   /api/saves/:filename`);
-  console.log(`  POST   /api/upload`);
-  console.log(`  DELETE /api/saves/:filename`);
-  console.log(`  POST   /api/log (frontend logging)`);
+  console.log('API Endpoints:');
+  console.log('  GET    /api/health');
+  console.log('  GET    /api/saves');
+  console.log('  GET    /api/saves/:filename');
+  console.log('  PUT    /api/saves/:filename');
+  console.log('  POST   /api/saves/:filename');
+  console.log('  POST   /api/upload');
+  console.log('  DELETE /api/saves/:filename');
+  console.log('  POST   /api/log');
   console.log('');
-  console.log('Server ready to accept connections!');
-  console.log('=====================================');
+  console.log('Server ready!');
+  console.log('=====================================\n');
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
+  console.log('\nSIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('\nSIGINT received, shutting down gracefully...');
   server.close(() => {
     console.log('Server closed');
     process.exit(0);
