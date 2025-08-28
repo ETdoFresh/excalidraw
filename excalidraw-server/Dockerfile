@@ -20,9 +20,9 @@ FROM --platform=${TARGETPLATFORM} node:18-alpine
 
 WORKDIR /app
 
-# Copy server files from excalidraw-server subdirectory
-COPY excalidraw-server/package*.json ./
-COPY excalidraw-server/server.js ./
+# Copy server files (we need to pass them separately)
+COPY --from=frontend-build /opt/app/excalidraw-server/package*.json ./
+COPY --from=frontend-build /opt/app/excalidraw-server/server.js ./
 
 # Install production dependencies
 RUN npm ci --only=production || npm install --production
