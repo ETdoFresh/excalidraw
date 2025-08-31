@@ -1,0 +1,22 @@
+{
+  "name": "excalidraw-backend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Filesystem API server for Excalidraw dev setup",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "jest --runInBand",
+    "verify": "node scripts/run-and-test.js",
+    "e2e": "node scripts/run-and-test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4"
+  }
+}
