@@ -22,11 +22,23 @@ export const AppMainMenu: React.FC<{
   theme: Theme | "system";
   setTheme: (theme: Theme | "system") => void;
   refresh: () => void;
+  onSaveToServer?: () => void;
+  onOpenFromServer?: () => void;
 }> = React.memo((props) => {
   return (
     <MainMenu>
       <MainMenu.DefaultItems.LoadScene />
       <MainMenu.DefaultItems.SaveToActiveFile />
+      {props.onOpenFromServer && (
+        <MainMenu.Item onSelect={props.onOpenFromServer}>
+          Open from Server
+        </MainMenu.Item>
+      )}
+      {props.onSaveToServer && (
+        <MainMenu.Item onSelect={props.onSaveToServer}>
+          Save to Server
+        </MainMenu.Item>
+      )}
       <MainMenu.DefaultItems.Export />
       <MainMenu.DefaultItems.SaveAsImage />
       {props.isCollabEnabled && (

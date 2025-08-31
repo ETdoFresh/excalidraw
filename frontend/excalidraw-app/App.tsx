@@ -33,6 +33,7 @@ import {
 import polyfill from "@excalidraw/excalidraw/polyfill";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
+import { serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 import { useCallbackRefState } from "@excalidraw/excalidraw/hooks/useCallbackRefState";
 import { t } from "@excalidraw/excalidraw/i18n";
 
@@ -871,6 +872,74 @@ const ExcalidrawWrapper = () => {
           theme={appTheme}
           setTheme={(theme) => setAppTheme(theme)}
           refresh={() => forceRefresh((prev) => !prev)}
+          onSaveToServer={async () => {
+            if (!excalidrawAPI) return;
+            try {
+              const name = excalidrawAPI.getName() || "excalidraw-drawing";
+              const defaultPath = `drawings/${name.endsWith(".excalidraw") ? name : name + ".excalidraw"}`;
+              const relPath = window.prompt(
+                "Enter server path to save (relative):",
+                defaultPath,
+              );
+              if (!relPath) return;
+
+              const serialized = serializeAsJSON(
+                excalidrawAPI.getSceneElements(),
+                excalidrawAPI.getAppState(),
+                excalidrawAPI.getFiles(),
+                "local",
+              );
+
+              const res = await fetch("/api/file", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: relPath, content: serialized, encoding: "utf8" }),
+              });
+              if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || "Failed to save file");
+              }
+              excalidrawAPI.setToast({ message: `Saved to server: ${relPath}` });
+            } catch (err: any) {
+              excalidrawAPI.updateScene({
+                appState: { errorMessage: err?.message || "Failed to save" },
+              });
+            }
+          }}
+          onOpenFromServer={async () => {
+            if (!excalidrawAPI) return;
+            try {
+              const relPath = window.prompt(
+                "Enter server path to open (relative):",
+                "drawings/",
+              );
+              if (!relPath) return;
+              const res = await fetch(`/api/file?path=${encodeURIComponent(relPath)}&encoding=utf8`);
+              if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || "Failed to load file");
+              }
+              const data = await res.json();
+              const content = data?.content;
+              if (!content) {
+                throw new Error("Empty file content");
+              }
+              const parsed = JSON.parse(content);
+              const restored = restore(parsed, null, null, {
+                repairBindings: true,
+                deleteInvisibleElements: true,
+              });
+              excalidrawAPI.updateScene({
+                ...restored,
+                captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+              });
+              excalidrawAPI.setToast({ message: `Opened from server: ${relPath}` });
+            } catch (err: any) {
+              excalidrawAPI.updateScene({
+                appState: { errorMessage: err?.message || "Failed to open" },
+              });
+            }
+          }}
         />
         <AppWelcomeScreen
           onCollabDialogOpen={onCollabDialogOpen}
