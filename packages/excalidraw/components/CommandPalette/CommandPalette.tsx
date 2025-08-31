@@ -344,8 +344,6 @@ function CommandPaletteInner({
       const exportCommands: CommandPaletteItem[] = [
         actionManager.actions.saveToActiveFile,
         actionManager.actions.saveFileToDisk,
-        actionManager.actions.saveToServerDrive,
-        actionManager.actions.loadFromServerDrive,
         actionManager.actions.copyAsPng,
         actionManager.actions.copyAsSvg,
       ].map((action) => actionToCommand(action, DEFAULT_CATEGORIES.export));

@@ -11,7 +11,6 @@ import {
   actionShortcuts,
   actionToggleSearchMenu,
   actionToggleTheme,
-  actionOpenLoadOptions,
 } from "../../actions";
 import { getShortcutFromShortcutName } from "../../actions/shortcuts";
 import { trackEvent } from "../../analytics";
@@ -53,17 +52,28 @@ export const LoadScene = () => {
   const actionManager = useExcalidrawActionManager();
   const elements = useExcalidrawElements();
 
-  // Check if the open load options action is enabled
-  if (!actionManager.isActionEnabled(actionOpenLoadOptions)) {
-    // Fall back to checking if load scene is enabled
-    if (!actionManager.isActionEnabled(actionLoadScene)) {
-      return null;
-    }
+  if (!actionManager.isActionEnabled(actionLoadScene)) {
+    return null;
   }
 
   const handleSelect = async () => {
-    // Always show the load options dialog now
-    actionManager.executeAction(actionOpenLoadOptions);
+    if (
+      !elements.length ||
+      (await openConfirmModal({
+        title: t("overwriteConfirm.modal.loadFromFile.title"),
+        actionLabel: t("overwriteConfirm.modal.loadFromFile.button"),
+        color: "warning",
+        description: (
+          <Trans
+            i18nKey="overwriteConfirm.modal.loadFromFile.description"
+            bold={(text) => <strong>{text}</strong>}
+            br={() => <br />}
+          />
+        ),
+      }))
+    ) {
+      actionManager.executeAction(actionLoadScene);
+    }
   };
 
   return (

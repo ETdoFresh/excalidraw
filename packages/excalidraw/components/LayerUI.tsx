@@ -18,7 +18,7 @@ import { ShapeCache } from "@excalidraw/element";
 
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
-import { actionToggleStats, actionLoadScene } from "../actions";
+import { actionToggleStats } from "../actions";
 import { trackEvent } from "../analytics";
 import { isHandToolActive } from "../appState";
 import { TunnelsContext, useInitializeTunnels } from "../context/tunnels";
@@ -58,10 +58,6 @@ import { ImageExportDialog } from "./ImageExportDialog";
 import { Island } from "./Island";
 import { JSONExportDialog } from "./JSONExportDialog";
 import { LaserPointerButton } from "./LaserPointerButton";
-import { ServerDriveLoadDialog } from "./ServerDriveLoadDialog";
-import { ServerDriveSaveDialog } from "./ServerDriveSaveDialog";
-import { LoadOptionsDialog } from "./LoadOptionsDialog";
-import { FileNameDisplay } from "./FileNameDisplay";
 
 import "./LayerUI.scss";
 import "./Toolbar.scss";
@@ -427,8 +423,6 @@ const LayerUI = ({
       <DefaultOverwriteConfirmDialog />
       {appState.openDialog?.name === "ttd" && <TTDDialog __fallback />}
       {/* ------------------------------------------------------------------ */}
-      
-      <FileNameDisplay />
 
       {appState.isLoading && <LoadingMessage delay={250} />}
       {appState.errorMessage && (
@@ -504,43 +498,6 @@ const LayerUI = ({
       <tunnels.OverwriteConfirmDialogTunnel.Out />
       {renderImageExportDialog()}
       {renderJSONExportDialog()}
-      {appState.openDialog?.name === "serverDriveLoad" && (
-        <ServerDriveLoadDialog
-          onClose={() => setAppState({ openDialog: null })}
-          onLoad={(data) => {
-            actionManager.executeAction({
-              name: "loadScene",
-              perform: () => ({
-                elements: data.elements,
-                appState: data.appState,
-                files: data.files,
-                captureUpdate: true,
-              }),
-            } as any);
-            setAppState({ openDialog: null });
-          }}
-        />
-      )}
-      {appState.openDialog?.name === "serverDriveSave" && (
-        <ServerDriveSaveDialog
-          elements={elements}
-          appState={appState}
-          files={app.files}
-          onClose={() => setAppState({ openDialog: null })}
-          defaultFilename={app.getName() || "untitled"}
-        />
-      )}
-      {appState.openDialog?.name === "loadOptions" && (
-        <LoadOptionsDialog
-          onClose={() => setAppState({ openDialog: null })}
-          onLoadFromFile={() => {
-            actionManager.executeAction(actionLoadScene);
-          }}
-          onLoadFromServer={() => {
-            setAppState({ openDialog: { name: "serverDriveLoad" } });
-          }}
-        />
-      )}
       {appState.pasteDialog.shown && (
         <PasteChartDialog
           setAppState={setAppState}

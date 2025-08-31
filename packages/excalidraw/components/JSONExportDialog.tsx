@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 import { getFrame } from "@excalidraw/common";
 
@@ -14,8 +14,6 @@ import { Card } from "./Card";
 import { Dialog } from "./Dialog";
 import { ToolButton } from "./ToolButton";
 import { exportToFileIcon, LinkIcon } from "./icons";
-import { ServerDriveIcon } from "./icons/serverDrive";
-import { ServerDriveSaveDialog } from "./ServerDriveSaveDialog";
 
 import "./ExportDialog.scss";
 
@@ -48,21 +46,9 @@ const JSONExportModal = ({
   canvas: HTMLCanvasElement;
 }) => {
   const { onExportToBackend } = exportOpts;
-  const [showServerDriveSave, setShowServerDriveSave] = useState(false);
-  
   return (
-    <>
-      {showServerDriveSave && (
-        <ServerDriveSaveDialog
-          elements={elements}
-          appState={appState}
-          files={files}
-          onClose={() => setShowServerDriveSave(false)}
-          defaultFilename={appState.name || "untitled"}
-        />
-      )}
-      <div className="ExportDialog ExportDialog--json">
-        <div className="ExportDialog-cards">
+    <div className="ExportDialog ExportDialog--json">
+      <div className="ExportDialog-cards">
         {exportOpts.saveFileToDisk && (
           <Card color="lime">
             <div className="Card-icon">{exportToFileIcon}</div>
@@ -107,26 +93,10 @@ const JSONExportModal = ({
             />
           </Card>
         )}
-        <Card color="cyan">
-          <div className="Card-icon">{ServerDriveIcon}</div>
-          <h2>{t("exportDialog.serverDrive_title")}</h2>
-          <div className="Card-details">{t("exportDialog.serverDrive_details")}</div>
-          <ToolButton
-            className="Card-button"
-            type="button"
-            title={t("exportDialog.serverDrive_button")}
-            aria-label={t("exportDialog.serverDrive_button")}
-            showAriaLabel={true}
-            onClick={() => {
-              setShowServerDriveSave(true);
-            }}
-          />
-        </Card>
         {exportOpts.renderCustomUI &&
           exportOpts.renderCustomUI(elements, appState, files, canvas)}
       </div>
     </div>
-    </>
   );
 };
 
