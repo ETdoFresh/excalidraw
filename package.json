@@ -1,0 +1,17 @@
+{
+  "name": "excalidraw-dev-orchestrator",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Run backend, frontend, and proxy together",
+  "scripts": {
+    "start": "concurrently -k -n backend,frontend,proxy -c blue,magenta,green \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:proxy\"",
+    "start:backend": "npm --prefix backend start",
+    "start:frontend": "yarn --cwd frontend start",
+    "start:proxy": "npm --prefix proxy start",
+    "setup": "npm --prefix backend install && (cd frontend && yarn install) && npm --prefix proxy install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

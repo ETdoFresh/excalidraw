@@ -1,0 +1,15 @@
+{
+  "name": "excalidraw-proxy",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Simple reverse proxy for frontend and backend",
+  "main": "server.js",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
+}
+
