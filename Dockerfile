@@ -20,6 +20,9 @@ COPY proxy ./proxy
 # Install subproject deps using the orchestrator script
 RUN npm run setup
 
+# Prevent Vite from trying to open a browser in container
+ENV VITE_OPEN=false
+
 # Ports: proxy(3000), backend(3001), frontend(5173)
 EXPOSE 3000 3001 5173
 
