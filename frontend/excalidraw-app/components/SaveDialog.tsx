@@ -88,14 +88,15 @@ export const SaveDialog: React.FC<{
     const byName = (a: Item, b: Item) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
     const byDateAsc = (a: Item, b: Item) => (a.mtimeMs || 0) - (b.mtimeMs || 0);
-    const byDateDesc = (a: Item, b: Item) => (b.mtimeMs || 0) - (a.mtimeMs || 0);
+    const byDateDesc = (a: Item, b: Item) =>
+      (b.mtimeMs || 0) - (a.mtimeMs || 0);
 
     const sortFn =
       sortKey === "name"
         ? byName
         : sortKey === "date_asc"
-          ? byDateAsc
-          : byDateDesc;
+        ? byDateAsc
+        : byDateDesc;
 
     dirs.sort(sortFn);
     files.sort(sortFn);
@@ -351,7 +352,9 @@ export const SaveDialog: React.FC<{
                 id="save-sort"
                 value={sortKey}
                 onChange={(e) =>
-                  setSortKey(e.target.value as "name" | "date_desc" | "date_asc")
+                  setSortKey(
+                    e.target.value as "name" | "date_desc" | "date_asc",
+                  )
                 }
                 style={{ padding: "4px 6px" }}
               >
@@ -552,7 +555,6 @@ export const SaveDialog: React.FC<{
                               >
                                 {TrashIcon}
                               </span>
-  
                             </button>
                           </>
                         )

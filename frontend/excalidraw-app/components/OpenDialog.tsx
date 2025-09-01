@@ -81,8 +81,7 @@ export const OpenDialog: React.FC<{
 
     const byName = (a: Item, b: Item) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-    const byDateAsc = (a: Item, b: Item) =>
-      (a.mtimeMs || 0) - (b.mtimeMs || 0);
+    const byDateAsc = (a: Item, b: Item) => (a.mtimeMs || 0) - (b.mtimeMs || 0);
     const byDateDesc = (a: Item, b: Item) =>
       (b.mtimeMs || 0) - (a.mtimeMs || 0);
 
@@ -90,8 +89,8 @@ export const OpenDialog: React.FC<{
       sortKey === "name"
         ? byName
         : sortKey === "date_asc"
-          ? byDateAsc
-          : byDateDesc;
+        ? byDateAsc
+        : byDateDesc;
 
     dirs.sort(sortFn);
     files.sort(sortFn);
@@ -431,15 +430,15 @@ export const OpenDialog: React.FC<{
                                 title="Rename"
                                 aria-label="Rename"
                               >
-                              <span
-                                style={{
-                                  width: 18,
-                                  height: 18,
-                                  display: "inline-flex",
-                                }}
-                              >
-                                {FreedrawIcon}
-                              </span>
+                                <span
+                                  style={{
+                                    width: 18,
+                                    height: 18,
+                                    display: "inline-flex",
+                                  }}
+                                >
+                                  {FreedrawIcon}
+                                </span>
                               </button>
                               <button
                                 className="ToolIcon_type_button"
@@ -456,15 +455,15 @@ export const OpenDialog: React.FC<{
                                 title="Delete"
                                 aria-label="Delete"
                               >
-                              <span
-                                style={{
-                                  width: 18,
-                                  height: 18,
-                                  display: "inline-flex",
-                                }}
-                              >
-                                {TrashIcon}
-                              </span>
+                                <span
+                                  style={{
+                                    width: 18,
+                                    height: 18,
+                                    display: "inline-flex",
+                                  }}
+                                >
+                                  {TrashIcon}
+                                </span>
                               </button>
                             </>
                           )}
