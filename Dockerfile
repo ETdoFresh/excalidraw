@@ -17,7 +17,11 @@ RUN npm_config_target_arch=${TARGETARCH} yarn build:app:docker
 
 FROM --platform=${TARGETPLATFORM} nginx:1.27-alpine AS frontend
 COPY --from=fe-build /opt/node_app/frontend/excalidraw-app/build /usr/share/nginx/html
-HEALTHCHECK CMD wget -q -O /dev/null http://localhost || exit 1
+# Configure nginx to listen on 5173
+RUN rm -f /etc/nginx/conf.d/default.conf \
+ && printf 'server {\n  listen 5173;\n  server_name _;\n  root /usr/share/nginx/html;\n  index index.html;\n  location / {\n    try_files $uri $uri/ /index.html;\n  }\n}\n' > /etc/nginx/conf.d/default.conf
+EXPOSE 5173
+HEALTHCHECK CMD wget -q -O /dev/null http://localhost:5173 || exit 1
 
 
 ########## BACKEND (deps + final) ##########
@@ -53,4 +57,3 @@ COPY proxy/ .
 EXPOSE 3000
 HEALTHCHECK CMD wget -q -O /dev/null http://localhost:3000 || exit 1
 CMD ["node", "server.js"]
-
