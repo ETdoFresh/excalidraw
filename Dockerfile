@@ -29,7 +29,7 @@ FROM --platform=${BUILDPLATFORM} node:18-alpine AS be-deps
 WORKDIR /opt/node_app/backend
 COPY backend/package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev
+    if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev --no-audit --no-fund; fi
 
 FROM --platform=${TARGETPLATFORM} node:18-alpine AS backend
 WORKDIR /opt/node_app/backend
@@ -46,7 +46,7 @@ FROM --platform=${BUILDPLATFORM} node:18-alpine AS proxy-deps
 WORKDIR /opt/node_app/proxy
 COPY proxy/package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev
+    if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev --no-audit --no-fund; fi
 
 FROM --platform=${TARGETPLATFORM} node:18-alpine AS proxy
 WORKDIR /opt/node_app/proxy
@@ -57,3 +57,6 @@ COPY proxy/ .
 EXPOSE 3000
 HEALTHCHECK CMD wget -q -O /dev/null http://localhost:3000 || exit 1
 CMD ["node", "server.js"]
+
+# Make frontend the default build output
+FROM frontend AS final
