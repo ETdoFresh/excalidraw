@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
   // https://vitejs.dev/config/
   return {
     server: {
+      host: true,
       port: Number(envVars.VITE_APP_PORT || 5173),
       // open the browser (disable in CI/headless via VITE_OPEN=false)
       open: envVars.VITE_OPEN === "false" ? false : true,

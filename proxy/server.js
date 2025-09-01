@@ -5,8 +5,9 @@ const PORT = Number(process.env.PORT || 3000);
 const FRONTEND_PORT = Number(process.env.FRONTEND_PORT || 5173);
 const BACKEND_PORT = Number(process.env.BACKEND_PORT || 3001);
 
-const FRONTEND_TARGET = process.env.FRONTEND_ORIGIN || `http://localhost:${FRONTEND_PORT}`;
-const BACKEND_TARGET = process.env.BACKEND_ORIGIN || `http://localhost:${BACKEND_PORT}`;
+// Prefer IPv4 loopback to avoid IPv6 (::1) resolution issues inside containers
+const FRONTEND_TARGET = process.env.FRONTEND_ORIGIN || `http://127.0.0.1:${FRONTEND_PORT}`;
+const BACKEND_TARGET = process.env.BACKEND_ORIGIN || `http://127.0.0.1:${BACKEND_PORT}`;
 
 const proxy = httpProxy.createProxyServer({});
 
@@ -40,4 +41,3 @@ server.listen(PORT, () => {
   console.log(`  /api -> ${BACKEND_TARGET}`);
   console.log(`  /*   -> ${FRONTEND_TARGET}`);
 });
-
