@@ -448,7 +448,15 @@ export const SaveDialog: React.FC<{
                   {save}
                 </span>
               ) : (
-                <span style={{ width: 18, height: 18, display: "inline-flex" }}>{save}</span>
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    display: "inline-flex",
+                  }}
+                >
+                  {save}
+                </span>
               )}
             </ToolButton>
           </div>
@@ -532,7 +540,15 @@ export const SaveDialog: React.FC<{
                             aria-label="Save"
                             type="button"
                           >
-                            <span style={{ width: 18, height: 18, display: "inline-flex" }}>{save}</span>
+                            <span
+                              style={{
+                                width: 18,
+                                height: 18,
+                                display: "inline-flex",
+                              }}
+                            >
+                              {save}
+                            </span>
                           </button>
                           <button
                             className="ToolIcon_type_button"
@@ -545,7 +561,15 @@ export const SaveDialog: React.FC<{
                             aria-label="Cancel"
                             type="button"
                           >
-                            <span style={{ width: 18, height: 18, display: "inline-flex" }}>{CloseIcon}</span>
+                            <span
+                              style={{
+                                width: 18,
+                                height: 18,
+                                display: "inline-flex",
+                              }}
+                            >
+                              {CloseIcon}
+                            </span>
                           </button>
                         </>
                       ) : (
