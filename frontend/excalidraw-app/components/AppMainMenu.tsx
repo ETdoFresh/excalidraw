@@ -23,7 +23,6 @@ export const AppMainMenu: React.FC<{
   setTheme: (theme: Theme | "system") => void;
   refresh: () => void;
   onOpenDialog?: () => void;
-  onSaveDialog?: () => void;
 }> = React.memo((props) => {
   return (
     <MainMenu>
@@ -33,9 +32,6 @@ export const AppMainMenu: React.FC<{
         <MainMenu.DefaultItems.LoadScene />
       )}
       <MainMenu.DefaultItems.SaveToActiveFile />
-      {props.onSaveDialog && (
-        <MainMenu.Item onSelect={props.onSaveDialog}>Save…</MainMenu.Item>
-      )}
       <MainMenu.DefaultItems.Export />
       <MainMenu.DefaultItems.SaveAsImage />
       {props.isCollabEnabled && (

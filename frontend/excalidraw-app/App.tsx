@@ -12,7 +12,7 @@ import {
   DEFAULT_CATEGORIES,
 } from "@excalidraw/excalidraw/components/CommandPalette/CommandPalette";
 import { ErrorDialog } from "@excalidraw/excalidraw/components/ErrorDialog";
-import { OverwriteConfirmDialog } from "@excalidraw/excalidraw/components/OverwriteConfirm/OverwriteConfirm";
+// OverwriteConfirmDialog is rendered by the core LayerUI; we don't use it directly
 import { openConfirmModal } from "@excalidraw/excalidraw/components/OverwriteConfirm/OverwriteConfirmState";
 import { ShareableLinkDialog } from "@excalidraw/excalidraw/components/ShareableLinkDialog";
 import Trans from "@excalidraw/excalidraw/components/Trans";
@@ -33,7 +33,6 @@ import {
 import polyfill from "@excalidraw/excalidraw/polyfill";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
-import { serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 import { useCallbackRefState } from "@excalidraw/excalidraw/hooks/useCallbackRefState";
 import { t } from "@excalidraw/excalidraw/i18n";
 
@@ -100,6 +99,7 @@ import {
   ExportToExcalidrawPlus,
   exportToExcalidrawPlus,
 } from "./components/ExportToExcalidrawPlus";
+import { SaveToServer } from "./components/SaveToServer";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
 
 import {
@@ -135,7 +135,6 @@ import DebugCanvas, {
 import { AIComponents } from "./components/AI";
 import { ExcalidrawPlusIframeExport } from "./ExcalidrawPlusIframeExport";
 import { OpenDialog } from "./components/OpenDialog";
-import { SaveDialog } from "./components/SaveDialog";
 
 import "./index.scss";
 
@@ -369,7 +368,6 @@ const ExcalidrawWrapper = () => {
     useCallbackRefState<ExcalidrawImperativeAPI>();
 
   const [isOpenDialogOpen, setIsOpenDialogOpen] = useState(false);
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
   const [, setShareDialogState] = useAtom(shareDialogStateAtom);
   const [collabAPI] = useAtom(collabAPIAtom);
@@ -817,7 +815,24 @@ const ExcalidrawWrapper = () => {
               renderCustomUI: excalidrawAPI
                 ? (elements, appState, files) => {
                     return (
-                      <ExportToExcalidrawPlus
+                      <>
+                        <SaveToServer
+                          elements={elements}
+                          appState={appState}
+                          files={files}
+                          name={excalidrawAPI.getName()}
+                          onError={(error) =>
+                            excalidrawAPI?.updateScene({
+                              appState: { errorMessage: error.message },
+                            })
+                          }
+                          onSuccess={() =>
+                            excalidrawAPI.updateScene({
+                              appState: { openDialog: null },
+                            })
+                          }
+                        />
+                        <ExportToExcalidrawPlus
                         elements={elements}
                         appState={appState}
                         files={files}
@@ -835,6 +850,7 @@ const ExcalidrawWrapper = () => {
                           });
                         }}
                       />
+                      </>
                     );
                   }
                 : undefined,
@@ -878,96 +894,16 @@ const ExcalidrawWrapper = () => {
           setTheme={(theme) => setAppTheme(theme)}
           refresh={() => forceRefresh((prev) => !prev)}
           onOpenDialog={() => setIsOpenDialogOpen(true)}
-          onSaveDialog={() => setIsSaveDialogOpen(true)}
         />
         <AppWelcomeScreen
           onCollabDialogOpen={onCollabDialogOpen}
           isCollabEnabled={!isCollabDisabled}
         />
-        <OverwriteConfirmDialog>
-          <OverwriteConfirmDialog.Actions.ExportToImage />
-          <OverwriteConfirmDialog.Actions.SaveToDisk />
-          {excalidrawAPI && (
-            <OverwriteConfirmDialog.Action
-              title="Save to Server"
-              actionLabel="Save to Server"
-              onClick={async () => {
-                try {
-                  const name = excalidrawAPI.getName() || "excalidraw-drawing";
-                  const defaultPath = `drawings/${
-                    name.endsWith(".excalidraw") ? name : `${name}.excalidraw`
-                  }`;
-                  const relPath = window.prompt(
-                    "Enter server path to save (relative):",
-                    defaultPath,
-                  );
-                  if (!relPath) {
-                    return;
-                  }
-
-                  const serialized = serializeAsJSON(
-                    excalidrawAPI.getSceneElements(),
-                    excalidrawAPI.getAppState(),
-                    excalidrawAPI.getFiles(),
-                    "local",
-                  );
-
-                  const res = await fetch("/api/file", {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      path: relPath,
-                      content: serialized,
-                      encoding: "utf8",
-                    }),
-                  });
-                  if (!res.ok) {
-                    const msg = await res.text();
-                    throw new Error(msg || "Failed to save file");
-                  }
-                  excalidrawAPI.setToast({
-                    message: `Saved to server: ${relPath}`,
-                  });
-                } catch (err: any) {
-                  excalidrawAPI.updateScene({
-                    appState: {
-                      errorMessage: err?.message || "Failed to save",
-                    },
-                  });
-                }
-              }}
-            >
-              Save the current drawing to the server under the drawings/ folder.
-            </OverwriteConfirmDialog.Action>
-          )}
-          {excalidrawAPI && (
-            <OverwriteConfirmDialog.Action
-              title={t("overwriteConfirm.action.excalidrawPlus.title")}
-              actionLabel={t("overwriteConfirm.action.excalidrawPlus.button")}
-              onClick={() => {
-                exportToExcalidrawPlus(
-                  excalidrawAPI.getSceneElements(),
-                  excalidrawAPI.getAppState(),
-                  excalidrawAPI.getFiles(),
-                  excalidrawAPI.getName(),
-                );
-              }}
-            >
-              {t("overwriteConfirm.action.excalidrawPlus.description")}
-            </OverwriteConfirmDialog.Action>
-          )}
-        </OverwriteConfirmDialog>
+        {/* Use default Save to... dialog; custom cards are injected via renderCustomUI */}
         {excalidrawAPI && (
           <OpenDialog
             isOpen={isOpenDialogOpen}
             onClose={() => setIsOpenDialogOpen(false)}
-            excalidrawAPI={excalidrawAPI}
-          />
-        )}
-        {excalidrawAPI && (
-          <SaveDialog
-            isOpen={isSaveDialogOpen}
-            onClose={() => setIsSaveDialogOpen(false)}
             excalidrawAPI={excalidrawAPI}
           />
         )}
