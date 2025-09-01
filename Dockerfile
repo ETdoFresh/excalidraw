@@ -1,62 +1,27 @@
 # syntax=docker/dockerfile:1.6
 
-########## FRONTEND (build + final) ##########
-FROM --platform=${BUILDPLATFORM} node:18 AS fe-build
-WORKDIR /opt/node_app/frontend
+# Single image that installs frontend, backend, and proxy, then runs `npm start` at the repo root.
+FROM node:18
 
-# Copy only the frontend workspace
-COPY frontend/ .
+WORKDIR /opt/app
 
-# do not ignore optional dependencies:
-# Error: Cannot find module @rollup/rollup-linux-x64-gnu
-RUN --mount=type=cache,target=/root/.cache/yarn \
-    npm_config_target_arch=${TARGETARCH} yarn --network-timeout 600000
+# Ensure Yarn (v1) is available for the frontend workspace
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 
-ARG NODE_ENV=production
-RUN npm_config_target_arch=${TARGETARCH} yarn build:app:docker
+# Install root deps (concurrently)
+COPY package.json package-lock.json ./
+RUN npm ci || npm install
 
-FROM --platform=${TARGETPLATFORM} nginx:1.27-alpine AS frontend
-COPY --from=fe-build /opt/node_app/frontend/excalidraw-app/build /usr/share/nginx/html
-# Configure nginx to listen on 5173
-RUN rm -f /etc/nginx/conf.d/default.conf \
- && printf 'server {\n  listen 5173;\n  server_name _;\n  root /usr/share/nginx/html;\n  index index.html;\n  location / {\n    try_files $uri $uri/ /index.html;\n  }\n}\n' > /etc/nginx/conf.d/default.conf
-EXPOSE 5173
-HEALTHCHECK CMD wget -q -O /dev/null http://localhost:5173 || exit 1
+# Copy the app source
+COPY backend ./backend
+COPY frontend ./frontend
+COPY proxy ./proxy
 
+# Install subproject deps using the orchestrator script
+RUN npm run setup
 
-########## BACKEND (deps + final) ##########
-FROM --platform=${BUILDPLATFORM} node:18-alpine AS be-deps
-WORKDIR /opt/node_app/backend
-COPY backend/package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev --no-audit --no-fund; fi
+# Ports: proxy(3000), backend(3001), frontend(5173)
+EXPOSE 3000 3001 5173
 
-FROM --platform=${TARGETPLATFORM} node:18-alpine AS backend
-WORKDIR /opt/node_app/backend
-ENV NODE_ENV=production
-COPY --from=be-deps /opt/node_app/backend/node_modules ./node_modules
-COPY backend/ .
-EXPOSE 3001
-HEALTHCHECK CMD wget -q -O /dev/null http://localhost:3001/api/health || exit 1
-CMD ["node", "src/server.js"]
-
-
-########## PROXY (deps + final) ##########
-FROM --platform=${BUILDPLATFORM} node:18-alpine AS proxy-deps
-WORKDIR /opt/node_app/proxy
-COPY proxy/package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev --no-audit --no-fund; fi
-
-FROM --platform=${TARGETPLATFORM} node:18-alpine AS proxy
-WORKDIR /opt/node_app/proxy
-ENV NODE_ENV=production \
-    PORT=3000
-COPY --from=proxy-deps /opt/node_app/proxy/node_modules ./node_modules
-COPY proxy/ .
-EXPOSE 3000
-HEALTHCHECK CMD wget -q -O /dev/null http://localhost:3000 || exit 1
-CMD ["node", "server.js"]
-
-# Make frontend the default build output
-FROM frontend AS final
+# Default command runs all three via concurrently
+CMD ["npm", "start"]
