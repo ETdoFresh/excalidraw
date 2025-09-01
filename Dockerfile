@@ -20,15 +20,8 @@ COPY proxy ./proxy
 # Install subproject deps using the orchestrator script
 RUN npm run setup
 
-# Build the frontend once (no dev/watch in container)
-RUN yarn --cwd frontend build:app:docker
+# Ports: proxy(3000), backend(3001), preview(5173)
+EXPOSE 3000 3001 5173
 
-# Environment for proxy to serve the built frontend
-ENV SERVE_STATIC=true \
-    FRONTEND_DIR=/opt/app/frontend/excalidraw-app/build
-
-# Ports: proxy(3000), backend(3001)
-EXPOSE 3000 3001
-
-# Default command runs backend + proxy only
+# Default command runs backend + frontend preview + proxy
 CMD ["npm", "run", "start:prod"]

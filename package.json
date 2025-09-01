@@ -5,9 +5,10 @@
   "description": "Run backend, frontend, and proxy together",
   "scripts": {
     "start": "concurrently -k -n backend,frontend,proxy -c blue,magenta,green \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:proxy\"",
-    "start:prod": "concurrently -k -n backend,proxy -c blue,green \"npm run start:backend\" \"npm run start:proxy\"",
+    "start:prod": "concurrently -k -n backend,preview,proxy -c blue,magenta,green \"npm run start:backend\" \"npm run start:frontend-preview\" \"npm run start:proxy\"",
     "start:backend": "npm --prefix backend start",
     "start:frontend": "yarn --cwd frontend start",
+    "start:frontend-preview": "yarn --cwd frontend/excalidraw-app build:preview",
     "start:proxy": "npm --prefix proxy start",
     "setup": "npm --prefix backend install && (cd frontend && yarn install) && npm --prefix proxy install"
   },
