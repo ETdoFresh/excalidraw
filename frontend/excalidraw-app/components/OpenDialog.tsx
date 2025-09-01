@@ -253,6 +253,12 @@ export const OpenDialog: React.FC<{
               type="button"
               aria-label="Open from File"
               onClick={handleOpenFromFile}
+              style={{
+                padding: "10px 10px",
+                color: "#fff",
+                borderRadius: 8,
+                minWidth: 92,
+              }}
             >
               Open from File
             </ToolButton>
@@ -268,6 +274,12 @@ export const OpenDialog: React.FC<{
               type="button"
               aria-label="Browse server"
               onClick={() => setMode("server")}
+              style={{
+                padding: "10px 10px",
+                color: "#fff",
+                borderRadius: 8,
+                minWidth: 92,
+              }}
             >
               Browse
             </ToolButton>

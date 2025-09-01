@@ -117,6 +117,12 @@ export const ExportToExcalidrawPlus: React.FC<{
         title={t("exportDialog.excalidrawplus_button")}
         aria-label={t("exportDialog.excalidrawplus_button")}
         showAriaLabel={true}
+        style={{
+          padding: "10px 10px",
+          color: "#fff",
+          borderRadius: 8,
+          minWidth: 92,
+        }}
         onClick={async () => {
           try {
             trackEvent("export", "eplus", `ui (${getFrame()})`);

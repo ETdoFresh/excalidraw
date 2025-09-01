@@ -46,10 +46,13 @@ export const SaveToServer: React.FC<{
   const [renameValue, setRenameValue] = useState<string>("");
   const willOverwrite = useMemo(() => {
     const base = (fileName || "").trim();
-    if (!base) return false;
+    if (!base) {
+      return false;
+    }
     const final = base.endsWith(".excalidraw") ? base : `${base}.excalidraw`;
     return items.some(
-      (it) => it.type === "file" && it.name.toLowerCase() === final.toLowerCase(),
+      (it) =>
+        it.type === "file" && it.name.toLowerCase() === final.toLowerCase(),
     );
   }, [items, fileName]);
 
@@ -65,7 +68,9 @@ export const SaveToServer: React.FC<{
       setLoading(true);
       setError(null);
       const res = await fetch(`/api/list?path=${encodeURIComponent(cwd)}`);
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
       const json = await res.json();
       setItems(json.items || []);
     } catch (e: any) {
@@ -82,19 +87,18 @@ export const SaveToServer: React.FC<{
   }, [pickerOpen, loadList]);
 
   const navigateUp = () => {
-    if (cwd === "drawings") return;
+    if (cwd === "drawings") {
+      return;
+    }
     const parts = cwd.split("/");
     parts.pop();
     setCwd(parts.join("/") || "drawings");
   };
 
-  const saveAt = async (relPath: string) => {
-    const serialized = serializeAsJSON(
-      elements,
-      appState as any,
-      files,
-      "local",
-    );
+  const saveAt = async (relPath: string, contentOverride?: string) => {
+    const serialized =
+      contentOverride ??
+      serializeAsJSON(elements, appState as any, files, "local");
     const res = await fetch("/api/file", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -123,7 +127,9 @@ export const SaveToServer: React.FC<{
     const resGet = await fetch(
       `/api/file?path=${encodeURIComponent(oldRelPath)}&encoding=utf8`,
     );
-    if (!resGet.ok) throw new Error(await resGet.text());
+    if (!resGet.ok) {
+      throw new Error(await resGet.text());
+    }
     const { content } = await resGet.json();
     const parts = oldRelPath.split("/");
     parts.pop();
@@ -132,7 +138,7 @@ export const SaveToServer: React.FC<{
       ? newBaseName
       : `${newBaseName}.excalidraw`;
     const newRelPath = `${dir}/${final}`;
-    await saveAt(newRelPath);
+    await saveAt(newRelPath, content);
     await deleteServerFile(oldRelPath);
   };
 
@@ -140,7 +146,9 @@ export const SaveToServer: React.FC<{
   const handleConfirmSave = async () => {
     try {
       const base = (fileName || "").trim();
-      if (!base) throw new Error("Please enter a file name");
+      if (!base) {
+        throw new Error("Please enter a file name");
+      }
       const final = base.endsWith(".excalidraw") ? base : `${base}.excalidraw`;
       await saveAt(`${cwd}/${final}`);
       setPickerOpen(false);
@@ -172,7 +180,11 @@ export const SaveToServer: React.FC<{
         Save
       </ToolButton>
       {pickerOpen && (
-        <Dialog onCloseRequest={() => setPickerOpen(false)} title={false} size="wide">
+        <Dialog
+          onCloseRequest={() => setPickerOpen(false)}
+          title={false}
+          size="wide"
+        >
           <button
             className="Dialog__close"
             onClick={() => setPickerOpen(false)}
@@ -182,16 +194,43 @@ export const SaveToServer: React.FC<{
           >
             {CloseIcon}
           </button>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 8,
+            }}
+          >
             <strong>Save to Server</strong>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button className="ToolIcon_type_button" onClick={navigateUp} disabled={cwd === "drawings"}>
-                <span style={{ width: 18, height: 18, display: "inline-flex", transform: "rotate(180deg)" }}>{ArrowIcon}</span>
+              <button
+                className="ToolIcon_type_button"
+                onClick={navigateUp}
+                disabled={cwd === "drawings"}
+              >
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    display: "inline-flex",
+                    transform: "rotate(180deg)",
+                  }}
+                >
+                  {ArrowIcon}
+                </span>
               </button>
               <span style={{ opacity: 0.7 }}>cwd: {cwd}</span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              marginBottom: 8,
+            }}
+          >
             <label htmlFor="server-save-filename">File name</label>
             <input
               id="server-save-filename"
@@ -213,14 +252,18 @@ export const SaveToServer: React.FC<{
                   width: 18,
                   height: 18,
                   display: "inline-flex",
-                  color: willOverwrite ? "var(--color-danger-color)" : undefined,
+                  color: willOverwrite
+                    ? "var(--color-danger-color)"
+                    : undefined,
                 }}
               >
                 {save}
               </span>
             </ToolButton>
           </div>
-          {error && <div style={{ color: "var(--color-danger-color)" }}>{error}</div>}
+          {error && (
+            <div style={{ color: "var(--color-danger-color)" }}>{error}</div>
+          )}
           <div
             style={{
               maxHeight: 360,
@@ -247,9 +290,14 @@ export const SaveToServer: React.FC<{
                       cursor: "pointer",
                     }}
                     onClick={() => {
-                      if (isRenaming) return;
-                      if (isDir) setCwd(it.path);
-                      else setFileName(it.name);
+                      if (isRenaming) {
+                        return;
+                      }
+                      if (isDir) {
+                        setCwd(it.path);
+                      } else {
+                        setFileName(it.name);
+                      }
                     }}
                     title={it.path}
                   >
@@ -370,7 +418,9 @@ export const SaveToServer: React.FC<{
                                     await deleteServerFile(it.path);
                                     loadList();
                                   } catch (err: any) {
-                                    setError(err?.message || "Failed to delete");
+                                    setError(
+                                      err?.message || "Failed to delete",
+                                    );
                                   }
                                 }
                               }}
