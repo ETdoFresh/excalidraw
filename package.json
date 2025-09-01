@@ -5,6 +5,7 @@
   "description": "Run backend, frontend, and proxy together",
   "scripts": {
     "start": "concurrently -k -n backend,frontend,proxy -c blue,magenta,green \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:proxy\"",
+    "start:prod": "concurrently -k -n backend,proxy -c blue,green \"npm run start:backend\" \"npm run start:proxy\"",
     "start:backend": "npm --prefix backend start",
     "start:frontend": "yarn --cwd frontend start",
     "start:proxy": "npm --prefix proxy start",
@@ -14,4 +15,3 @@
     "concurrently": "^8.2.2"
   }
 }
-

@@ -20,11 +20,15 @@ COPY proxy ./proxy
 # Install subproject deps using the orchestrator script
 RUN npm run setup
 
-# Prevent Vite from trying to open a browser in container
-ENV VITE_OPEN=false
+# Build the frontend once (no dev/watch in container)
+RUN yarn --cwd frontend build:app:docker
 
-# Ports: proxy(3000), backend(3001), frontend(5173)
-EXPOSE 3000 3001 5173
+# Environment for proxy to serve the built frontend
+ENV SERVE_STATIC=true \
+    FRONTEND_DIR=/opt/app/frontend/excalidraw-app/build
 
-# Default command runs all three via concurrently
-CMD ["npm", "start"]
+# Ports: proxy(3000), backend(3001)
+EXPOSE 3000 3001
+
+# Default command runs backend + proxy only
+CMD ["npm", "run", "start:prod"]

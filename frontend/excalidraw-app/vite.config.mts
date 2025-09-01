@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => {
       port: Number(envVars.VITE_APP_PORT || 5173),
       // open the browser (disable in CI/headless via VITE_OPEN=false)
       open: envVars.VITE_OPEN === "false" ? false : true,
+      // avoid inotify watcher limits in containers by enabling polling when requested
+      watch: {
+        usePolling: envVars.VITE_USE_POLLING === "true",
+        interval: Number(envVars.VITE_POLLING_INTERVAL || 1000),
+      },
     },
     // We need to specify the envDir since now there are no
     //more located in parallel with the vite.config.ts file but in parent dir
