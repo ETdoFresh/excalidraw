@@ -15,6 +15,7 @@ import { serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
+
 import {
   importUsernameFromLocalStorage,
   saveUsernameToLocalStorage,
@@ -71,7 +72,9 @@ export const SaveToServer: React.FC<{
   }, [items, fileName]);
 
   const ensureUserDir = useCallback(async () => {
-    if (!username) return;
+    if (!username) {
+      return;
+    }
     try {
       await fetch("/api/directory", {
         method: "POST",
@@ -97,7 +100,7 @@ export const SaveToServer: React.FC<{
     if (editUser && username && !usernameInput) {
       setUsernameInput(username);
     }
-  }, [editUser, username]);
+  }, [editUser, username, usernameInput]);
 
   const loadList = useCallback(async () => {
     try {
@@ -201,7 +204,9 @@ export const SaveToServer: React.FC<{
     <Card color="primary">
       <div className="Card-icon">💾</div>
       <h2>Save to Server</h2>
-      <div className="Card-details">Save into your drawings folder on the server.</div>
+      <div className="Card-details">
+        Save into your drawings folder on the server.
+      </div>
       <ToolButton
         className="Card-button"
         type="button"

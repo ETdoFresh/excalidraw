@@ -19,6 +19,7 @@ import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
 import { restore } from "@excalidraw/excalidraw/data/restore";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import {
   importUsernameFromLocalStorage,
   saveUsernameToLocalStorage,
@@ -71,10 +72,12 @@ export const OpenDialog: React.FC<{
     if (editUser && username && !usernameInput) {
       setUsernameInput(username);
     }
-  }, [editUser, username]);
+  }, [editUser, username, usernameInput]);
 
   const ensureUserDir = useCallback(async () => {
-    if (!username) return;
+    if (!username) {
+      return;
+    }
     try {
       await fetch("/api/directory", {
         method: "POST",
@@ -300,7 +303,9 @@ export const OpenDialog: React.FC<{
           <Card color="primary">
             <div className="Card-icon">{LibraryIcon}</div>
             <h2>Open from Server</h2>
-            <div className="Card-details">Browse your drawings folder on server.</div>
+            <div className="Card-details">
+              Browse your drawings folder on server.
+            </div>
             <ToolButton
               className="Card-button"
               type="button"
@@ -420,9 +425,7 @@ export const OpenDialog: React.FC<{
                 aria-label="Change user"
                 title="Change user"
               >
-                <span
-                  style={{ width: 18, height: 18, display: "inline-flex" }}
-                >
+                <span style={{ width: 18, height: 18, display: "inline-flex" }}>
                   {usersIcon}
                 </span>
               </button>
