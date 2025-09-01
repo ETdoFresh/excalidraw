@@ -9,8 +9,8 @@ WORKDIR /opt/app
 RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 
 # Install root deps (concurrently)
-COPY package.json package-lock.json ./
-RUN npm ci || npm install
+COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
 # Copy the app source
 COPY backend ./backend
