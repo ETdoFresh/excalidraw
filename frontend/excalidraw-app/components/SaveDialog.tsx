@@ -25,7 +25,6 @@ export const SaveDialog: React.FC<{
   onClose: () => void;
   excalidrawAPI: ExcalidrawImperativeAPI;
 }> = ({ isOpen, onClose, excalidrawAPI }) => {
-  
   type Item = {
     name: string;
     path: string;
@@ -44,6 +43,9 @@ export const SaveDialog: React.FC<{
     return n.endsWith(".excalidraw") ? n : `${n}.excalidraw`;
   }, [excalidrawAPI]);
   const [fileName, setFileName] = useState<string>(suggestedName);
+  const [sortKey, setSortKey] = useState<"name" | "date_desc" | "date_asc">(
+    "name",
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -78,6 +80,27 @@ export const SaveDialog: React.FC<{
       loadList();
     }
   }, [isOpen, mode, loadList]);
+
+  const sortedItems = useMemo(() => {
+    const dirs = items.filter((i) => i.type === "dir");
+    const files = items.filter((i) => i.type !== "dir");
+
+    const byName = (a: Item, b: Item) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    const byDateAsc = (a: Item, b: Item) => (a.mtimeMs || 0) - (b.mtimeMs || 0);
+    const byDateDesc = (a: Item, b: Item) => (b.mtimeMs || 0) - (a.mtimeMs || 0);
+
+    const sortFn =
+      sortKey === "name"
+        ? byName
+        : sortKey === "date_asc"
+          ? byDateAsc
+          : byDateDesc;
+
+    dirs.sort(sortFn);
+    files.sort(sortFn);
+    return [...dirs, ...files];
+  }, [items, sortKey]);
 
   const handleSaveToDisk = async () => {
     try {
@@ -320,7 +343,22 @@ export const SaveDialog: React.FC<{
             }}
           >
             <strong>Save to Server</strong>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <label htmlFor="save-sort" style={{ opacity: 0.7 }}>
+                Sort
+              </label>
+              <select
+                id="save-sort"
+                value={sortKey}
+                onChange={(e) =>
+                  setSortKey(e.target.value as "name" | "date_desc" | "date_asc")
+                }
+                style={{ padding: "4px 6px" }}
+              >
+                <option value="name">Name</option>
+                <option value="date_desc">Date Desc</option>
+                <option value="date_asc">Date Asc</option>
+              </select>
               <button
                 className="ToolIcon_type_button"
                 onClick={() => setMode("root")}
@@ -390,7 +428,7 @@ export const SaveDialog: React.FC<{
             {loading ? (
               <div>Loading…</div>
             ) : (
-              items.map((it) => {
+              sortedItems.map((it) => {
                 const isDir = it.type === "dir";
                 return (
                   <div
@@ -480,7 +518,13 @@ export const SaveDialog: React.FC<{
                               title="Rename"
                               aria-label="Rename"
                             >
-                              <span style={{ width: 18, height: 18, display: "inline-flex" }}>
+                              <span
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  display: "inline-flex",
+                                }}
+                              >
                                 {FreedrawIcon}
                               </span>
                             </button>
@@ -499,9 +543,16 @@ export const SaveDialog: React.FC<{
                               title="Delete"
                               aria-label="Delete"
                             >
-                              <span style={{ width: 18, height: 18, display: "inline-flex" }}>
+                              <span
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  display: "inline-flex",
+                                }}
+                              >
                                 {TrashIcon}
                               </span>
+  
                             </button>
                           </>
                         )

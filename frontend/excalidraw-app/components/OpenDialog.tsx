@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Dialog } from "@excalidraw/excalidraw/components/Dialog";
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
@@ -38,6 +38,9 @@ export const OpenDialog: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState<string>("");
+  const [sortKey, setSortKey] = useState<"name" | "date_desc" | "date_asc">(
+    "name",
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -71,6 +74,29 @@ export const OpenDialog: React.FC<{
       loadList();
     }
   }, [isOpen, mode, loadList]);
+
+  const sortedItems = useMemo(() => {
+    const dirs = items.filter((i) => i.type === "dir");
+    const files = items.filter((i) => i.type !== "dir");
+
+    const byName = (a: Item, b: Item) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    const byDateAsc = (a: Item, b: Item) =>
+      (a.mtimeMs || 0) - (b.mtimeMs || 0);
+    const byDateDesc = (a: Item, b: Item) =>
+      (b.mtimeMs || 0) - (a.mtimeMs || 0);
+
+    const sortFn =
+      sortKey === "name"
+        ? byName
+        : sortKey === "date_asc"
+          ? byDateAsc
+          : byDateDesc;
+
+    dirs.sort(sortFn);
+    files.sort(sortFn);
+    return [...dirs, ...files];
+  }, [items, sortKey]);
 
   const handleOpenFromFile = async () => {
     try {
@@ -261,7 +287,24 @@ export const OpenDialog: React.FC<{
             }}
           >
             <strong>Server Browser</strong>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <label htmlFor="open-sort" style={{ opacity: 0.7 }}>
+                Sort
+              </label>
+              <select
+                id="open-sort"
+                value={sortKey}
+                onChange={(e) =>
+                  setSortKey(
+                    e.target.value as "name" | "date_desc" | "date_asc",
+                  )
+                }
+                style={{ padding: "4px 6px" }}
+              >
+                <option value="name">Name</option>
+                <option value="date_desc">Date Desc</option>
+                <option value="date_asc">Date Asc</option>
+              </select>
               <button
                 className="ToolIcon_type_button"
                 onClick={() => setMode("root")}
@@ -295,7 +338,7 @@ export const OpenDialog: React.FC<{
             {loading ? (
               <div>Loading…</div>
             ) : (
-              items.map((it) => {
+              sortedItems.map((it) => {
                 const isDir = it.type === "dir";
                 const isExcal =
                   !isDir && it.name.toLowerCase().endsWith(".excalidraw");
@@ -388,9 +431,15 @@ export const OpenDialog: React.FC<{
                                 title="Rename"
                                 aria-label="Rename"
                               >
-                                <span style={{ width: 18, height: 18, display: "inline-flex" }}>
-                                  {FreedrawIcon}
-                                </span>
+                              <span
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  display: "inline-flex",
+                                }}
+                              >
+                                {FreedrawIcon}
+                              </span>
                               </button>
                               <button
                                 className="ToolIcon_type_button"
@@ -407,9 +456,15 @@ export const OpenDialog: React.FC<{
                                 title="Delete"
                                 aria-label="Delete"
                               >
-                                <span style={{ width: 18, height: 18, display: "inline-flex" }}>
-                                  {TrashIcon}
-                                </span>
+                              <span
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  display: "inline-flex",
+                                }}
+                              >
+                                {TrashIcon}
+                              </span>
                               </button>
                             </>
                           )}
