@@ -8,9 +8,10 @@ import {
   downloadIcon,
   LibraryIcon,
   TrashIcon,
-  checkIcon,
+  save,
   CloseIcon,
   FreedrawIcon,
+  ArrowIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { fileOpen } from "@excalidraw/excalidraw/data/filesystem";
 import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
@@ -307,8 +308,20 @@ export const OpenDialog: React.FC<{
               <button
                 className="ToolIcon_type_button"
                 onClick={() => setMode("root")}
+                type="button"
+                aria-label="Back"
+                title="Back"
               >
-                Back
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    display: "inline-flex",
+                    transform: "rotate(180deg)",
+                  }}
+                >
+                  {ArrowIcon}
+                </span>
               </button>
             </div>
           </div>
@@ -341,6 +354,7 @@ export const OpenDialog: React.FC<{
                 const isDir = it.type === "dir";
                 const isExcal =
                   !isDir && it.name.toLowerCase().endsWith(".excalidraw");
+                const isRenaming = !isDir && renaming === it.path;
                 return (
                   <div
                     key={it.path}
@@ -353,6 +367,9 @@ export const OpenDialog: React.FC<{
                       opacity: isDir || isExcal ? 1 : 0.5,
                     }}
                     onClick={() => {
+                      if (isRenaming) {
+                        return;
+                      }
                       if (isDir) {
                         setCwd(it.path);
                       } else if (isExcal) {
@@ -374,14 +391,11 @@ export const OpenDialog: React.FC<{
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
-                        flex: !isDir && renaming === it.path ? 1 : undefined,
-                        justifyContent:
-                          !isDir && renaming === it.path
-                            ? "flex-start"
-                            : undefined,
+                        flex: isRenaming ? 1 : undefined,
+                        justifyContent: isRenaming ? "flex-start" : undefined,
                       }}
                     >
-                      {!isDir && renaming === it.path ? (
+                      {!isDir && isRenaming ? (
                         <>
                           <input
                             type="text"
@@ -392,32 +406,38 @@ export const OpenDialog: React.FC<{
                           />
                           <button
                             className="ToolIcon_type_button"
+                            style={{ flex: "0 0 auto" }}
                             onClick={(e) => {
                               e.stopPropagation();
                               renameServerFile(it.path, renameValue);
                             }}
                             title="Save"
                             aria-label="Save"
+                            type="button"
                           >
-                            {checkIcon}
+                            <span style={{ width: 18, height: 18, display: "inline-flex" }}>{save}</span>
                           </button>
                           <button
                             className="ToolIcon_type_button"
+                            style={{ flex: "0 0 auto" }}
                             onClick={(e) => {
                               e.stopPropagation();
                               setRenaming(null);
                             }}
                             title="Cancel"
                             aria-label="Cancel"
+                            type="button"
                           >
-                            {CloseIcon}
+                            <span style={{ width: 18, height: 18, display: "inline-flex" }}>{CloseIcon}</span>
                           </button>
                         </>
                       ) : (
                         <>
-                          <span style={{ opacity: 0.6 }}>
-                            {isDir ? "dir" : `${it.size ?? 0} B`}
-                          </span>
+                          {!isRenaming && (
+                            <span style={{ opacity: 0.6 }}>
+                              {isDir ? "dir" : `${it.size ?? 0} B`}
+                            </span>
+                          )}
                           {!isDir && (
                             <>
                               <button

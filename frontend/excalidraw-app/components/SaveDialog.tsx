@@ -9,9 +9,10 @@ import {
   ExcalLogo,
   LibraryIcon,
   TrashIcon,
-  checkIcon,
+  save,
   CloseIcon,
   FreedrawIcon,
+  ArrowIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { saveAsJSON, serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
@@ -365,8 +366,20 @@ export const SaveDialog: React.FC<{
               <button
                 className="ToolIcon_type_button"
                 onClick={() => setMode("root")}
+                type="button"
+                aria-label="Back"
+                title="Back"
               >
-                Back
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    display: "inline-flex",
+                    transform: "rotate(180deg)",
+                  }}
+                >
+                  {ArrowIcon}
+                </span>
               </button>
             </div>
           </div>
@@ -399,7 +412,19 @@ export const SaveDialog: React.FC<{
             <ToolButton
               className="Card-button"
               type="button"
-              aria-label="Save"
+              aria-label={
+                items.some(
+                  (it) =>
+                    it.type === "file" &&
+                    (it.name === fileName ||
+                      it.name ===
+                        (fileName.endsWith(".excalidraw")
+                          ? fileName
+                          : `${fileName}.excalidraw`)),
+                )
+                  ? "Overwrite"
+                  : "Save"
+              }
               onClick={handleSaveToServer}
               disabled={!fileName.trim()}
             >
@@ -411,9 +436,20 @@ export const SaveDialog: React.FC<{
                       (fileName.endsWith(".excalidraw")
                         ? fileName
                         : `${fileName}.excalidraw`)),
-              )
-                ? "Overwrite"
-                : "Save"}
+              ) ? (
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    display: "inline-flex",
+                    color: "var(--color-danger-color)",
+                  }}
+                >
+                  {save}
+                </span>
+              ) : (
+                <span style={{ width: 18, height: 18, display: "inline-flex" }}>{save}</span>
+              )}
             </ToolButton>
           </div>
           {error && (
@@ -433,6 +469,7 @@ export const SaveDialog: React.FC<{
             ) : (
               sortedItems.map((it) => {
                 const isDir = it.type === "dir";
+                const isRenaming = !isDir && renaming === it.path;
                 return (
                   <div
                     key={it.path}
@@ -465,17 +502,16 @@ export const SaveDialog: React.FC<{
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
-                        flex: !isDir && renaming === it.path ? 1 : undefined,
-                        justifyContent:
-                          !isDir && renaming === it.path
-                            ? "flex-start"
-                            : undefined,
+                        flex: isRenaming ? 1 : undefined,
+                        justifyContent: isRenaming ? "flex-start" : undefined,
                       }}
                     >
-                      <span style={{ opacity: 0.6 }}>
-                        {isDir ? "dir" : `${it.size ?? 0} B`}
-                      </span>
-                      {!isDir && renaming === it.path ? (
+                      {!isDir || !isRenaming ? (
+                        <span style={{ opacity: 0.6 }}>
+                          {isDir ? "dir" : `${it.size ?? 0} B`}
+                        </span>
+                      ) : null}
+                      {!isDir && isRenaming ? (
                         <>
                           <input
                             type="text"
@@ -487,25 +523,29 @@ export const SaveDialog: React.FC<{
                           />
                           <button
                             className="ToolIcon_type_button"
+                            style={{ flex: "0 0 auto" }}
                             onClick={(e) => {
                               e.stopPropagation();
                               renameServerFile(it.path, renameValue);
                             }}
                             title="Save"
                             aria-label="Save"
+                            type="button"
                           >
-                            {checkIcon}
+                            <span style={{ width: 18, height: 18, display: "inline-flex" }}>{save}</span>
                           </button>
                           <button
                             className="ToolIcon_type_button"
+                            style={{ flex: "0 0 auto" }}
                             onClick={(e) => {
                               e.stopPropagation();
                               setRenaming(null);
                             }}
                             title="Cancel"
                             aria-label="Cancel"
+                            type="button"
                           >
-                            {CloseIcon}
+                            <span style={{ width: 18, height: 18, display: "inline-flex" }}>{CloseIcon}</span>
                           </button>
                         </>
                       ) : (
