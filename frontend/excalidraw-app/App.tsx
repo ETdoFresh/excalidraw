@@ -888,54 +888,54 @@ const ExcalidrawWrapper = () => {
           <OverwriteConfirmDialog.Actions.ExportToImage />
           <OverwriteConfirmDialog.Actions.SaveToDisk />
           {excalidrawAPI && (
-          <OverwriteConfirmDialog.Action
-            title="Save to Server"
-            actionLabel="Save to Server"
-            onClick={async () => {
-              try {
-                const name = excalidrawAPI.getName() || "excalidraw-drawing";
-                const defaultPath = `drawings/${
-                  name.endsWith(".excalidraw") ? name : `${name}.excalidraw`
-                }`;
-                const relPath = window.prompt(
-                  "Enter server path to save (relative):",
-                  defaultPath,
-                );
-                if (!relPath) {
-                  return;
-                }
+            <OverwriteConfirmDialog.Action
+              title="Save to Server"
+              actionLabel="Save to Server"
+              onClick={async () => {
+                try {
+                  const name = excalidrawAPI.getName() || "excalidraw-drawing";
+                  const defaultPath = `drawings/${
+                    name.endsWith(".excalidraw") ? name : `${name}.excalidraw`
+                  }`;
+                  const relPath = window.prompt(
+                    "Enter server path to save (relative):",
+                    defaultPath,
+                  );
+                  if (!relPath) {
+                    return;
+                  }
 
-                const serialized = serializeAsJSON(
-                  excalidrawAPI.getSceneElements(),
-                  excalidrawAPI.getAppState(),
-                  excalidrawAPI.getFiles(),
-                  "local",
-                );
+                  const serialized = serializeAsJSON(
+                    excalidrawAPI.getSceneElements(),
+                    excalidrawAPI.getAppState(),
+                    excalidrawAPI.getFiles(),
+                    "local",
+                  );
 
-                const res = await fetch("/api/file", {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    path: relPath,
-                    content: serialized,
-                    encoding: "utf8",
-                  }),
-                });
-                if (!res.ok) {
-                  const msg = await res.text();
-                  throw new Error(msg || "Failed to save file");
+                  const res = await fetch("/api/file", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      path: relPath,
+                      content: serialized,
+                      encoding: "utf8",
+                    }),
+                  });
+                  if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || "Failed to save file");
+                  }
+                  excalidrawAPI.setToast({
+                    message: `Saved to server: ${relPath}`,
+                  });
+                } catch (err: any) {
+                  excalidrawAPI.updateScene({
+                    appState: {
+                      errorMessage: err?.message || "Failed to save",
+                    },
+                  });
                 }
-                excalidrawAPI.setToast({
-                  message: `Saved to server: ${relPath}`,
-                });
-              } catch (err: any) {
-                excalidrawAPI.updateScene({
-                  appState: {
-                    errorMessage: err?.message || "Failed to save",
-                  },
-                });
-              }
-            }}
+              }}
             >
               Save the current drawing to the server under the drawings/ folder.
             </OverwriteConfirmDialog.Action>

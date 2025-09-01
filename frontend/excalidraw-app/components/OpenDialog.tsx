@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { Dialog } from "@excalidraw/excalidraw/components/Dialog";
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
@@ -7,6 +7,10 @@ import { ToolButton } from "@excalidraw/excalidraw/components/ToolButton";
 import {
   downloadIcon,
   LibraryIcon,
+  TrashIcon,
+  checkIcon,
+  CloseIcon,
+  FreedrawIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { fileOpen } from "@excalidraw/excalidraw/data/filesystem";
 import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
@@ -32,6 +36,8 @@ export const OpenDialog: React.FC<{
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>("");
 
   useEffect(() => {
     if (!isOpen) {
@@ -43,26 +49,28 @@ export const OpenDialog: React.FC<{
     }
   }, [isOpen]);
 
+  const loadList = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`/api/list?path=${encodeURIComponent(cwd)}`);
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const json = await res.json();
+      setItems(json.items || []);
+    } catch (e: any) {
+      setError(e?.message || "Failed to list directory");
+    } finally {
+      setLoading(false);
+    }
+  }, [cwd]);
+
   useEffect(() => {
     if (isOpen && mode === "server") {
-      (async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const res = await fetch(`/api/list?path=${encodeURIComponent(cwd)}`);
-          if (!res.ok) {
-            throw new Error(await res.text());
-          }
-          const json = await res.json();
-          setItems(json.items || []);
-        } catch (e: any) {
-          setError(e?.message || "Failed to list directory");
-        } finally {
-          setLoading(false);
-        }
-      })();
+      loadList();
     }
-  }, [isOpen, mode, cwd]);
+  }, [isOpen, mode, loadList]);
 
   const handleOpenFromFile = async () => {
     try {
@@ -133,12 +141,79 @@ export const OpenDialog: React.FC<{
     }
   };
 
+  const deleteServerFile = async (relPath: string) => {
+    try {
+      const res = await fetch(`/api/file?path=${encodeURIComponent(relPath)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      await loadList();
+    } catch (err: any) {
+      excalidrawAPI.updateScene({
+        appState: { errorMessage: err?.message || "Failed to delete" },
+      });
+    }
+  };
+
+  const renameServerFile = async (oldRelPath: string, newBaseName: string) => {
+    try {
+      const resGet = await fetch(
+        `/api/file?path=${encodeURIComponent(oldRelPath)}&encoding=utf8`,
+      );
+      if (!resGet.ok) {
+        throw new Error(await resGet.text());
+      }
+      const json = await resGet.json();
+      const content = json?.content ?? "";
+      const parts = oldRelPath.split("/");
+      parts.pop();
+      const dir = parts.join("/");
+      const finalName = newBaseName.endsWith(".excalidraw")
+        ? newBaseName
+        : `${newBaseName}.excalidraw`;
+      const newRelPath = `${dir}/${finalName}`;
+      const put = await fetch(`/api/file`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: newRelPath, content, encoding: "utf8" }),
+      });
+      if (!put.ok) {
+        throw new Error(await put.text());
+      }
+      const del = await fetch(
+        `/api/file?path=${encodeURIComponent(oldRelPath)}`,
+        { method: "DELETE" },
+      );
+      if (!del.ok) {
+        throw new Error(await del.text());
+      }
+      setRenaming(null);
+      await loadList();
+    } catch (err: any) {
+      excalidrawAPI.updateScene({
+        appState: { errorMessage: err?.message || "Failed to rename" },
+      });
+    }
+  };
+
   if (!isOpen) {
     return null;
   }
 
   return (
     <Dialog onCloseRequest={onClose} title={false} size="wide">
+      <button
+        className="Dialog__close"
+        onClick={onClose}
+        title="Close"
+        aria-label="Close"
+        type="button"
+        style={{ position: "absolute", right: 8, top: 8 }}
+      >
+        {CloseIcon}
+      </button>
       {mode === "root" && (
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <Card color="primary">
@@ -244,11 +319,102 @@ export const OpenDialog: React.FC<{
                     }}
                     title={it.path}
                   >
-                    <span>
+                    <span
+                      style={{
+                        display:
+                          !isDir && renaming === it.path ? "none" : undefined,
+                      }}
+                    >
                       {isDir ? "📁" : "📄"} {it.name}
                     </span>
-                    <span style={{ opacity: 0.6 }}>
-                      {isDir ? "dir" : `${it.size ?? 0} B`}
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flex: !isDir && renaming === it.path ? 1 : undefined,
+                        justifyContent:
+                          !isDir && renaming === it.path
+                            ? "flex-start"
+                            : undefined,
+                      }}
+                    >
+                      {!isDir && renaming === it.path ? (
+                        <>
+                          <input
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            style={{ flex: 1, minWidth: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <button
+                            className="ToolIcon_type_button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              renameServerFile(it.path, renameValue);
+                            }}
+                            title="Save"
+                            aria-label="Save"
+                          >
+                            {checkIcon}
+                          </button>
+                          <button
+                            className="ToolIcon_type_button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenaming(null);
+                            }}
+                            title="Cancel"
+                            aria-label="Cancel"
+                          >
+                            {CloseIcon}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ opacity: 0.6 }}>
+                            {isDir ? "dir" : `${it.size ?? 0} B`}
+                          </span>
+                          {!isDir && (
+                            <>
+                              <button
+                                className="ToolIcon_type_button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRenaming(it.path);
+                                  setRenameValue(it.name);
+                                }}
+                                title="Rename"
+                                aria-label="Rename"
+                              >
+                                <span style={{ width: 18, height: 18, display: "inline-flex" }}>
+                                  {FreedrawIcon}
+                                </span>
+                              </button>
+                              <button
+                                className="ToolIcon_type_button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    window.confirm(
+                                      `Delete file "${it.name}"? This cannot be undone.`,
+                                    )
+                                  ) {
+                                    deleteServerFile(it.path);
+                                  }
+                                }}
+                                title="Delete"
+                                aria-label="Delete"
+                              >
+                                <span style={{ width: 18, height: 18, display: "inline-flex" }}>
+                                  {TrashIcon}
+                                </span>
+                              </button>
+                            </>
+                          )}
+                        </>
+                      )}
                     </span>
                   </div>
                 );

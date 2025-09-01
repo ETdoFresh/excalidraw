@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Dialog } from "@excalidraw/excalidraw/components/Dialog";
 import { Card } from "@excalidraw/excalidraw/components/Card";
@@ -8,6 +8,10 @@ import {
   ExportImageIcon,
   ExcalLogo,
   LibraryIcon,
+  TrashIcon,
+  checkIcon,
+  CloseIcon,
+  FreedrawIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { saveAsJSON, serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
@@ -21,10 +25,7 @@ export const SaveDialog: React.FC<{
   onClose: () => void;
   excalidrawAPI: ExcalidrawImperativeAPI;
 }> = ({ isOpen, onClose, excalidrawAPI }) => {
-  if (!isOpen) {
-    return null;
-  }
-
+  
   type Item = {
     name: string;
     path: string;
@@ -55,26 +56,28 @@ export const SaveDialog: React.FC<{
     }
   }, [isOpen, suggestedName]);
 
+  const loadList = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`/api/list?path=${encodeURIComponent(cwd)}`);
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const json = await res.json();
+      setItems(json.items || []);
+    } catch (e: any) {
+      setError(e?.message || "Failed to list directory");
+    } finally {
+      setLoading(false);
+    }
+  }, [cwd]);
+
   useEffect(() => {
     if (isOpen && mode === "server") {
-      (async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const res = await fetch(`/api/list?path=${encodeURIComponent(cwd)}`);
-          if (!res.ok) {
-            throw new Error(await res.text());
-          }
-          const json = await res.json();
-          setItems(json.items || []);
-        } catch (e: any) {
-          setError(e?.message || "Failed to list directory");
-        } finally {
-          setLoading(false);
-        }
-      })();
+      loadList();
     }
-  }, [isOpen, mode, cwd]);
+  }, [isOpen, mode, loadList]);
 
   const handleSaveToDisk = async () => {
     try {
@@ -114,7 +117,11 @@ export const SaveDialog: React.FC<{
     const res = await fetch("/api/file", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: relPath, content: serialized, encoding: "utf8" }),
+      body: JSON.stringify({
+        path: relPath,
+        content: serialized,
+        encoding: "utf8",
+      }),
     });
     if (!res.ok) {
       const msg = await res.text();
@@ -129,13 +136,76 @@ export const SaveDialog: React.FC<{
       if (!base) {
         throw new Error("Please enter a file name");
       }
-      const finalName = base.endsWith(".excalidraw") ? base : `${base}.excalidraw`;
+      const finalName = base.endsWith(".excalidraw")
+        ? base
+        : `${base}.excalidraw`;
       const relPath = `${cwd}/${finalName}`;
       await saveToServerAt(relPath);
       onClose();
     } catch (err: any) {
       excalidrawAPI.updateScene({
         appState: { errorMessage: err?.message || "Failed to save" },
+      });
+    }
+  };
+
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>("");
+
+  const deleteServerFile = async (relPath: string) => {
+    try {
+      const res = await fetch(`/api/file?path=${encodeURIComponent(relPath)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      await loadList();
+    } catch (err: any) {
+      excalidrawAPI.updateScene({
+        appState: { errorMessage: err?.message || "Failed to delete" },
+      });
+    }
+  };
+
+  const renameServerFile = async (oldRelPath: string, newBaseName: string) => {
+    try {
+      const resGet = await fetch(
+        `/api/file?path=${encodeURIComponent(oldRelPath)}&encoding=utf8`,
+      );
+      if (!resGet.ok) {
+        throw new Error(await resGet.text());
+      }
+      const json = await resGet.json();
+      const content = json?.content ?? "";
+      const parts = oldRelPath.split("/");
+      parts.pop();
+      const dir = parts.join("/");
+      const finalName = newBaseName.endsWith(".excalidraw")
+        ? newBaseName
+        : `${newBaseName}.excalidraw`;
+      const newRelPath = `${dir}/${finalName}`;
+      const put = await fetch(`/api/file`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: newRelPath, content, encoding: "utf8" }),
+      });
+      if (!put.ok) {
+        throw new Error(await put.text());
+      }
+      const del = await fetch(
+        `/api/file?path=${encodeURIComponent(oldRelPath)}`,
+        { method: "DELETE" },
+      );
+      if (!del.ok) {
+        throw new Error(await del.text());
+      }
+      setRenaming(null);
+      setFileName(finalName);
+      await loadList();
+    } catch (err: any) {
+      excalidrawAPI.updateScene({
+        appState: { errorMessage: err?.message || "Failed to rename" },
       });
     }
   };
@@ -163,8 +233,22 @@ export const SaveDialog: React.FC<{
     }
   };
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <Dialog onCloseRequest={onClose} title={false} size="wide">
+      <button
+        className="Dialog__close"
+        onClick={onClose}
+        title="Close"
+        aria-label="Close"
+        type="button"
+        style={{ position: "absolute", right: 8, top: 8 }}
+      >
+        {CloseIcon}
+      </button>
       {mode === "root" && (
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <Card color="primary">
@@ -207,7 +291,9 @@ export const SaveDialog: React.FC<{
             </ToolButton>
           </Card>
           <Card color="primary">
-            <div className="Card-icon" style={{ width: 24 }}>{ExcalLogo}</div>
+            <div className="Card-icon" style={{ width: 24 }}>
+              {ExcalLogo}
+            </div>
             <h2>Excalidraw+</h2>
             <div className="Card-details">Save to Excalidraw+ cloud.</div>
             <ToolButton
@@ -223,7 +309,9 @@ export const SaveDialog: React.FC<{
       )}
 
       {mode === "server" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+        >
           <div
             style={{
               display: "flex",
@@ -233,7 +321,10 @@ export const SaveDialog: React.FC<{
           >
             <strong>Save to Server</strong>
             <div>
-              <button className="ToolIcon_type_button" onClick={() => setMode("root")}>
+              <button
+                className="ToolIcon_type_button"
+                onClick={() => setMode("root")}
+              >
                 Back
               </button>
             </div>
@@ -271,12 +362,22 @@ export const SaveDialog: React.FC<{
               onClick={handleSaveToServer}
               disabled={!fileName.trim()}
             >
-              {items.some((it) => it.type === "file" && (it.name === fileName || it.name === (fileName.endsWith(".excalidraw") ? fileName : `${fileName}.excalidraw`)))
+              {items.some(
+                (it) =>
+                  it.type === "file" &&
+                  (it.name === fileName ||
+                    it.name ===
+                      (fileName.endsWith(".excalidraw")
+                        ? fileName
+                        : `${fileName}.excalidraw`)),
+              )
                 ? "Overwrite"
                 : "Save"}
             </ToolButton>
           </div>
-          {error && <div style={{ color: "var(--color-danger-color)" }}>{error}</div>}
+          {error && (
+            <div style={{ color: "var(--color-danger-color)" }}>{error}</div>
+          )}
           <div
             style={{
               maxHeight: 360,
@@ -310,8 +411,102 @@ export const SaveDialog: React.FC<{
                     }}
                     title={it.path}
                   >
-                    <span>{isDir ? "📁" : "📄"} {it.name}</span>
-                    <span style={{ opacity: 0.6 }}>{isDir ? "dir" : `${it.size ?? 0} B`}</span>
+                    <span
+                      style={{
+                        display:
+                          !isDir && renaming === it.path ? "none" : undefined,
+                      }}
+                    >
+                      {isDir ? "📁" : "📄"} {it.name}
+                    </span>
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flex: !isDir && renaming === it.path ? 1 : undefined,
+                        justifyContent:
+                          !isDir && renaming === it.path
+                            ? "flex-start"
+                            : undefined,
+                      }}
+                    >
+                      <span style={{ opacity: 0.6 }}>
+                        {isDir ? "dir" : `${it.size ?? 0} B`}
+                      </span>
+                      {!isDir && renaming === it.path ? (
+                        <>
+                          <input
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            style={{ flex: 1, minWidth: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label="New file name"
+                          />
+                          <button
+                            className="ToolIcon_type_button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              renameServerFile(it.path, renameValue);
+                            }}
+                            title="Save"
+                            aria-label="Save"
+                          >
+                            {checkIcon}
+                          </button>
+                          <button
+                            className="ToolIcon_type_button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenaming(null);
+                            }}
+                            title="Cancel"
+                            aria-label="Cancel"
+                          >
+                            {CloseIcon}
+                          </button>
+                        </>
+                      ) : (
+                        !isDir && (
+                          <>
+                            <button
+                              className="ToolIcon_type_button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRenaming(it.path);
+                                setRenameValue(it.name);
+                              }}
+                              title="Rename"
+                              aria-label="Rename"
+                            >
+                              <span style={{ width: 18, height: 18, display: "inline-flex" }}>
+                                {FreedrawIcon}
+                              </span>
+                            </button>
+                            <button
+                              className="ToolIcon_type_button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  window.confirm(
+                                    `Delete file "${it.name}"? This cannot be undone.`,
+                                  )
+                                ) {
+                                  deleteServerFile(it.path);
+                                }
+                              }}
+                              title="Delete"
+                              aria-label="Delete"
+                            >
+                              <span style={{ width: 18, height: 18, display: "inline-flex" }}>
+                                {TrashIcon}
+                              </span>
+                            </button>
+                          </>
+                        )
+                      )}
+                    </span>
                   </div>
                 );
               })
