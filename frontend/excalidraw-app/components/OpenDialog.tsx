@@ -12,12 +12,17 @@ import {
   CloseIcon,
   FreedrawIcon,
   ArrowIcon,
+  usersIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { fileOpen } from "@excalidraw/excalidraw/data/filesystem";
 import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
 import { restore } from "@excalidraw/excalidraw/data/restore";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import {
+  importUsernameFromLocalStorage,
+  saveUsernameToLocalStorage,
+} from "../data/localStorage";
 
 type Item = {
   name: string;
@@ -33,7 +38,16 @@ export const OpenDialog: React.FC<{
   excalidrawAPI: ExcalidrawImperativeAPI;
 }> = ({ isOpen, onClose, excalidrawAPI }) => {
   const [mode, setMode] = useState<"root" | "server">("root");
-  const [cwd, setCwd] = useState<string>("drawings");
+  const [username, setUsername] = useState<string | null>(
+    importUsernameFromLocalStorage(),
+  );
+  const [usernameInput, setUsernameInput] = useState<string>("");
+  const [editUser, setEditUser] = useState<boolean>(false);
+  const rootCwd = useMemo(
+    () => (username ? `drawings/${username}` : "drawings"),
+    [username],
+  );
+  const [cwd, setCwd] = useState<string>(rootCwd);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +60,31 @@ export const OpenDialog: React.FC<{
   useEffect(() => {
     if (!isOpen) {
       setMode("root");
-      setCwd("drawings");
+      setCwd(rootCwd);
       setItems([]);
       setError(null);
       setLoading(false);
     }
-  }, [isOpen]);
+  }, [isOpen, rootCwd]);
+
+  useEffect(() => {
+    if (editUser && username && !usernameInput) {
+      setUsernameInput(username);
+    }
+  }, [editUser, username]);
+
+  const ensureUserDir = useCallback(async () => {
+    if (!username) return;
+    try {
+      await fetch("/api/directory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: `drawings/${username}` }),
+      });
+    } catch {
+      // ignore errors, will be created on write if needed
+    }
+  }, [username]);
 
   const loadList = useCallback(async () => {
     try {
@@ -71,10 +104,11 @@ export const OpenDialog: React.FC<{
   }, [cwd]);
 
   useEffect(() => {
-    if (isOpen && mode === "server") {
+    if (isOpen && mode === "server" && username) {
+      ensureUserDir();
       loadList();
     }
-  }, [isOpen, mode, loadList]);
+  }, [isOpen, mode, username, ensureUserDir, loadList]);
 
   const sortedItems = useMemo(() => {
     const dirs = items.filter((i) => i.type === "dir");
@@ -125,12 +159,12 @@ export const OpenDialog: React.FC<{
   };
 
   const navigateUp = () => {
-    if (cwd === "drawings") {
+    if (cwd === rootCwd) {
       return;
     }
     const parts = cwd.split("/");
     parts.pop();
-    const next = parts.join("/") || "drawings";
+    const next = parts.join("/") || rootCwd;
     setCwd(next);
   };
 
@@ -266,9 +300,7 @@ export const OpenDialog: React.FC<{
           <Card color="primary">
             <div className="Card-icon">{LibraryIcon}</div>
             <h2>Open from Server</h2>
-            <div className="Card-details">
-              Browse the drawings/ folder on the server.
-            </div>
+            <div className="Card-details">Browse your drawings folder on server.</div>
             <ToolButton
               className="Card-button"
               type="button"
@@ -291,6 +323,52 @@ export const OpenDialog: React.FC<{
         <div
           style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
         >
+          {(!username || editUser) && (
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <label htmlFor="open-username" style={{ opacity: 0.8 }}>
+                Username
+              </label>
+              <input
+                id="open-username"
+                type="text"
+                placeholder="your-name"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <ToolButton
+                className="Card-button"
+                type="button"
+                aria-label="Set username"
+                onClick={async () => {
+                  const value = usernameInput.trim();
+                  if (!value) {
+                    setError("Please enter a username");
+                    return;
+                  }
+                  if (/[\\/]/.test(value)) {
+                    setError("Username cannot contain / or \\ characters");
+                    return;
+                  }
+                  saveUsernameToLocalStorage(value);
+                  setUsername(value);
+                  setCwd(`drawings/${value}`);
+                  try {
+                    await fetch("/api/directory", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ path: `drawings/${value}` }),
+                    });
+                  } catch {}
+                  setError(null);
+                  setEditUser(false);
+                }}
+                disabled={!usernameInput.trim()}
+              >
+                Set
+              </ToolButton>
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -335,13 +413,26 @@ export const OpenDialog: React.FC<{
                   {ArrowIcon}
                 </span>
               </button>
+              <button
+                className="ToolIcon_type_button"
+                onClick={() => setEditUser((v) => !v)}
+                type="button"
+                aria-label="Change user"
+                title="Change user"
+              >
+                <span
+                  style={{ width: 18, height: 18, display: "inline-flex" }}
+                >
+                  {usersIcon}
+                </span>
+              </button>
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             <button
               className="ToolIcon_type_button"
               onClick={navigateUp}
-              disabled={cwd === "drawings"}
+              disabled={cwd === rootCwd}
             >
               Up
             </button>
@@ -359,7 +450,11 @@ export const OpenDialog: React.FC<{
               padding: 8,
             }}
           >
-            {loading ? (
+            {!username ? (
+              <div style={{ opacity: 0.8 }}>
+                Enter a username to browse your folder.
+              </div>
+            ) : loading ? (
               <div>Loading…</div>
             ) : (
               sortedItems.map((it) => {

@@ -9,11 +9,16 @@ import {
   FreedrawIcon,
   TrashIcon,
   save,
+  usersIcon,
 } from "@excalidraw/excalidraw/components/icons";
 import { serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
+import {
+  importUsernameFromLocalStorage,
+  saveUsernameToLocalStorage,
+} from "../data/localStorage";
 
 type Item = {
   name: string;
@@ -32,13 +37,22 @@ export const SaveToServer: React.FC<{
   onSuccess: () => void;
 }> = ({ elements, appState, files, name, onError, onSuccess }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [username, setUsername] = useState<string | null>(
+    importUsernameFromLocalStorage(),
+  );
+  const [usernameInput, setUsernameInput] = useState<string>("");
+  const [editUser, setEditUser] = useState<boolean>(false);
+  const rootCwd = useMemo(
+    () => (username ? `drawings/${username}` : "drawings"),
+    [username],
+  );
   const defaultName = useMemo(() => {
     return name && name.endsWith(".excalidraw")
       ? name
       : `${name || "excalidraw-drawing"}.excalidraw`;
   }, [name]);
   const [fileName, setFileName] = useState<string>(defaultName);
-  const [cwd, setCwd] = useState<string>("drawings");
+  const [cwd, setCwd] = useState<string>(rootCwd);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,12 +70,34 @@ export const SaveToServer: React.FC<{
     );
   }, [items, fileName]);
 
+  const ensureUserDir = useCallback(async () => {
+    if (!username) return;
+    try {
+      await fetch("/api/directory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: `drawings/${username}` }),
+      });
+    } catch {
+      // ignore; server will create on write anyway
+    }
+  }, [username]);
+
   useEffect(() => {
     if (pickerOpen) {
       setFileName(defaultName);
-      setCwd("drawings");
+      setCwd(rootCwd);
+      if (username) {
+        ensureUserDir();
+      }
     }
-  }, [pickerOpen, defaultName]);
+  }, [pickerOpen, defaultName, rootCwd, username, ensureUserDir]);
+
+  useEffect(() => {
+    if (editUser && username && !usernameInput) {
+      setUsernameInput(username);
+    }
+  }, [editUser, username]);
 
   const loadList = useCallback(async () => {
     try {
@@ -81,18 +117,18 @@ export const SaveToServer: React.FC<{
   }, [cwd]);
 
   useEffect(() => {
-    if (pickerOpen) {
+    if (pickerOpen && username) {
       loadList();
     }
-  }, [pickerOpen, loadList]);
+  }, [pickerOpen, username, loadList]);
 
   const navigateUp = () => {
-    if (cwd === "drawings") {
+    if (cwd === rootCwd) {
       return;
     }
     const parts = cwd.split("/");
     parts.pop();
-    setCwd(parts.join("/") || "drawings");
+    setCwd(parts.join("/") || rootCwd);
   };
 
   const saveAt = async (relPath: string, contentOverride?: string) => {
@@ -145,6 +181,9 @@ export const SaveToServer: React.FC<{
   const handleSave = () => setPickerOpen(true);
   const handleConfirmSave = async () => {
     try {
+      if (!username) {
+        throw new Error("Please set a username first");
+      }
       const base = (fileName || "").trim();
       if (!base) {
         throw new Error("Please enter a file name");
@@ -162,9 +201,7 @@ export const SaveToServer: React.FC<{
     <Card color="primary">
       <div className="Card-icon">💾</div>
       <h2>Save to Server</h2>
-      <div className="Card-details">
-        Save into the drawings/ folder on the server.
-      </div>
+      <div className="Card-details">Save into your drawings folder on the server.</div>
       <ToolButton
         className="Card-button"
         type="button"
@@ -207,7 +244,7 @@ export const SaveToServer: React.FC<{
               <button
                 className="ToolIcon_type_button"
                 onClick={navigateUp}
-                disabled={cwd === "drawings"}
+                disabled={cwd === rootCwd}
               >
                 <span
                   style={{
@@ -220,9 +257,70 @@ export const SaveToServer: React.FC<{
                   {ArrowIcon}
                 </span>
               </button>
+              <button
+                className="ToolIcon_type_button"
+                onClick={() => setEditUser((v) => !v)}
+                title="Change user"
+                aria-label="Change user"
+              >
+                <span style={{ width: 18, height: 18, display: "inline-flex" }}>
+                  {usersIcon}
+                </span>
+              </button>
               <span style={{ opacity: 0.7 }}>cwd: {cwd}</span>
             </div>
           </div>
+          {(!username || editUser) && (
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                margin: "8px 0",
+              }}
+            >
+              <label htmlFor="server-save-username">Username</label>
+              <input
+                id="server-save-username"
+                type="text"
+                placeholder="your-name"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <ToolButton
+                className="Card-button"
+                type="button"
+                aria-label="Set username"
+                onClick={async () => {
+                  const value = usernameInput.trim();
+                  if (!value) {
+                    setError("Please enter a username");
+                    return;
+                  }
+                  if (/[\\/]/.test(value)) {
+                    setError("Username cannot contain / or \\ characters");
+                    return;
+                  }
+                  saveUsernameToLocalStorage(value);
+                  setUsername(value);
+                  setCwd(`drawings/${value}`);
+                  try {
+                    await fetch("/api/directory", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ path: `drawings/${value}` }),
+                    });
+                  } catch {}
+                  setError(null);
+                  setEditUser(false);
+                }}
+                disabled={!usernameInput.trim()}
+              >
+                Set
+              </ToolButton>
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -245,7 +343,7 @@ export const SaveToServer: React.FC<{
               type="button"
               aria-label={willOverwrite ? "Overwrite" : "Save"}
               onClick={handleConfirmSave}
-              disabled={!fileName.trim()}
+              disabled={!fileName.trim() || !username}
             >
               <span
                 style={{
@@ -273,7 +371,11 @@ export const SaveToServer: React.FC<{
               padding: 8,
             }}
           >
-            {loading ? (
+            {!username ? (
+              <div style={{ opacity: 0.8 }}>
+                Enter a username to browse your folder.
+              </div>
+            ) : loading ? (
               <div>Loading…</div>
             ) : (
               items.map((it) => {
