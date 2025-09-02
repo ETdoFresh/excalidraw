@@ -8,6 +8,9 @@ WORKDIR /opt/app
 # Ensure Yarn (v1) is available for the frontend workspace
 RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 
+# Disable auto-opening the browser in headless/container environments
+ENV VITE_OPEN=false
+
 # Install root deps (concurrently)
 COPY package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi

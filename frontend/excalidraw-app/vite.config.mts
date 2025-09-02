@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: true,
       port: Number(envVars.VITE_APP_PORT || 5173),
+      // don't auto-open browser in headless/CI (toggle via VITE_OPEN)
+      open: envVars.VITE_OPEN === "false" ? false : true,
     },
     // We need to specify the envDir since now there are no
     //more located in parallel with the vite.config.ts file but in parent dir
