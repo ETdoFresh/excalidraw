@@ -459,6 +459,8 @@ export const OpenDialog: React.FC<{
               </div>
             ) : loading ? (
               <div>Loading…</div>
+            ) : sortedItems.length === 0 ? (
+              <div style={{ opacity: 0.8 }}>No files available to open.</div>
             ) : (
               sortedItems.map((it) => {
                 const isDir = it.type === "dir";

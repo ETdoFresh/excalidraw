@@ -34,11 +34,21 @@ function createFilesRouter(baseDir) {
     try {
       const rel = (req.query.path || '').toString();
       const dir = resolveSafe(rel);
-      const items = await fsp.readdir(dir, { withFileTypes: true });
-      const list = items.map((d) => {
-        const full = path.join(dir, d.name);
-        return toFileInfo(full, d.name);
-      });
+      let list = [];
+      try {
+        const items = await fsp.readdir(dir, { withFileTypes: true });
+        list = items.map((d) => {
+          const full = path.join(dir, d.name);
+          return toFileInfo(full, d.name);
+        });
+      } catch (e) {
+        // If directory doesn't exist, treat as empty instead of erroring out
+        if (e && (e.code === 'ENOENT' || e.code === 'ENOTDIR')) {
+          list = [];
+        } else {
+          throw e;
+        }
+      }
       res.json({ base: BASE_DIR, cwd: path.relative(BASE_DIR, dir) || '.', items: list });
     } catch (err) {
       next(err);
